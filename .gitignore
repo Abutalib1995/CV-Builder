@@ -6,3 +6,10 @@ coverage/
 *.log
 .env*
 !.env.example
+.firebase/
+.firebaserc
+firebase.json
+.github/workflows/firebase-hosting-merge.yml
+.github/workflows/firebase-hosting-pull-request.yml
+.github/workflows/deploy.yaml
+.github/workflows/deploy.yaml

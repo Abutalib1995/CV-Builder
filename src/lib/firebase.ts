@@ -39,14 +39,18 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    // Ensure user record created in Firestore
+    // Ensure user record created in Firestore (swallow firestore error if rules not set up yet)
     if (result.user) {
-      await setDoc(doc(db, 'users', result.user.uid), {
-        email: result.user.email,
-        displayName: result.user.displayName || 'User',
-        photoURL: result.user.photoURL || '',
-        lastLogin: serverTimestamp()
-      }, { merge: true });
+      try {
+        await setDoc(doc(db, 'users', result.user.uid), {
+          email: result.user.email,
+          displayName: result.user.displayName || 'User',
+          photoURL: result.user.photoURL || '',
+          lastLogin: serverTimestamp()
+        }, { merge: true });
+      } catch (dbErr) {
+        console.warn("Firestore profile creation warning:", dbErr);
+      }
     }
     return { user: result.user, error: null };
   } catch (error: any) {
@@ -116,7 +120,7 @@ export const logoutUser = async () => {
   }
 };
 
-// Save current CV to Cloud
+// Save current CV to Cloud (Firestore NoSQL)
 export const saveCVToCloud = async (userId: string, cvData: CVData, title: string = 'My CV') => {
   try {
     const cvDocRef = doc(db, 'users', userId, 'cvs', 'current_cv');
@@ -128,7 +132,11 @@ export const saveCVToCloud = async (userId: string, cvData: CVData, title: strin
     return { success: true, error: null };
   } catch (error: any) {
     console.error("Cloud save failed:", error);
-    return { success: false, error: error.message };
+    let errMsg = error.message || 'Unknown error';
+    if (error.code === 'permission-denied' || errMsg.includes('insufficient permissions')) {
+      errMsg = 'Firebase Console-এ Firestore Security Rules এর কারণে অনুমতি পাওয়া যাচ্ছে না (Permission Denied)। Firebase Console > Firestore Database > Rules-এ গিয়ে রুলস আপডেট করুন।';
+    }
+    return { success: false, error: errMsg };
   }
 };
 

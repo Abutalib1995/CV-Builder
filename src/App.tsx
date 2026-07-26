@@ -9,12 +9,15 @@ import SavedCVsModal from './components/SavedCVsModal';
 import { 
   Download, Sparkles, FileText, Smartphone, Laptop, 
   HelpCircle, Eye, RefreshCw, Printer, AlertTriangle, CheckCircle, ExternalLink,
-  User as UserIcon, LogOut, Cloud, CloudCheck, LogIn, Save, FolderOpen
+  User as UserIcon, LogOut, Cloud, CloudCheck, LogIn, Save, FolderOpen, UserPlus
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth, onAuthStateChanged, logoutUser, saveCVToCloud, loadCVFromCloud, User } from './lib/firebase';
+import { 
+  auth, onAuthStateChanged, logoutUser, saveCVToCloud, loadCVFromCloud, 
+  saveCVVersion, getUserCVs, User 
+} from './lib/firebase';
 
 export default function App() {
   // Main CV State initialized from localStorage (if exists) or the premium sample data
@@ -29,6 +32,15 @@ export default function App() {
     }
     return INITIAL_CV_DATA;
   });
+
+  // Track active CV profile document ID and Title
+  const [currentCvId, setCurrentCvId] = useState<string>(() => {
+    return localStorage.getItem('cv_builder_current_id') || 'current_cv';
+  });
+  const [currentCvTitle, setCurrentCvTitle] = useState<string>(() => {
+    return localStorage.getItem('cv_builder_current_title') || 'আমার সিভি';
+  });
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [showExportSuccess, setShowExportSuccess] = useState(false);
   const [previewScale, setPreviewScale] = useState<number>(100);
@@ -45,11 +57,19 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Automatically load CV from cloud on initial login if available
-        const cloudCV = await loadCVFromCloud(currentUser.uid);
-        if (cloudCV) {
-          setCvData(cloudCV);
+        // Automatically load existing CVs from cloud on initial login
+        const userCvs = await getUserCVs(currentUser.uid);
+        if (userCvs.length > 0) {
+          setCurrentCvId(userCvs[0].id);
+          setCurrentCvTitle(userCvs[0].title);
+          setCvData(userCvs[0].data);
           setCloudStatus('saved');
+        } else {
+          const cloudCV = await loadCVFromCloud(currentUser.uid);
+          if (cloudCV) {
+            setCvData(cloudCV);
+            setCloudStatus('saved');
+          }
         }
       } else {
         setCloudStatus('idle');
@@ -62,6 +82,8 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('cv_builder_data', JSON.stringify(cvData));
+      localStorage.setItem('cv_builder_current_id', currentCvId);
+      localStorage.setItem('cv_builder_current_title', currentCvTitle);
     } catch (e) {
       console.error('Failed to save CV data to localStorage:', e);
     }
@@ -70,7 +92,7 @@ export default function App() {
     if (user) {
       setCloudStatus('saving');
       const timer = setTimeout(async () => {
-        const { success } = await saveCVToCloud(user.uid, cvData);
+        const { success } = await saveCVVersion(user.uid, currentCvId, currentCvTitle, cvData);
         if (success) {
           setCloudStatus('saved');
         } else {
@@ -79,7 +101,7 @@ export default function App() {
       }, 1000); // 1 sec debounce
       return () => clearTimeout(timer);
     }
-  }, [cvData, user]);
+  }, [cvData, user, currentCvId, currentCvTitle]);
 
   const handleManualCloudSave = async () => {
     if (!user) {
@@ -87,14 +109,21 @@ export default function App() {
       return;
     }
     setCloudStatus('saving');
-    const { success } = await saveCVToCloud(user.uid, cvData);
+    const { success, error } = await saveCVVersion(user.uid, currentCvId, currentCvTitle, cvData);
     if (success) {
       setCloudStatus('saved');
-      alert("আপনার সিভি সফলভাবে ক্লাউডে সেইভ করা হয়েছে!");
+      alert(`"${currentCvTitle}" সিভিটি সফলভাবে Firebase NoSQL Database (Cloud)-এ সেইভ করা হয়েছে!`);
     } else {
       setCloudStatus('error');
-      alert("ক্লাউড সেইভ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+      alert(error || "ক্লাউড সেইভ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
     }
+  };
+
+  const handleLoadCV = (id: string, title: string, loadedData: CVData) => {
+    setCurrentCvId(id);
+    setCurrentCvTitle(title);
+    setCvData(loadedData);
+    setCloudStatus('saved');
   };
 
   useEffect(() => {
@@ -439,8 +468,65 @@ export default function App() {
         </div>
       </header>
 
+      {/* Active CV Profile Info Banner */}
+      <div className="max-w-7xl w-full mx-auto px-4 md:px-6 pt-3 pb-0">
+        <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-3 px-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-purple-800/80">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-700/80 rounded-xl text-purple-200 shrink-0 shadow-inner">
+              <UserIcon className="w-4 h-4 text-purple-100" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-purple-700/80 text-purple-200 px-2 py-0.5 rounded-md border border-purple-600/50">
+                  সক্রিয় সিভি (Active)
+                </span>
+                <span className="text-xs font-bold text-white">{currentCvTitle}</span>
+              </div>
+              <p className="text-[11px] text-purple-200 mt-0.5">
+                প্রার্থীর নাম: <strong className="text-white font-bold">{cvData.personalInfo.fullName || 'নাম দেওয়া হয়নি'}</strong>
+                {cvData.personalInfo.jobTitle ? ` • ${cvData.personalInfo.jobTitle}` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                if (!user) {
+                  setIsAuthModalOpen(true);
+                } else {
+                  setIsSavedCVsModalOpen(true);
+                }
+              }}
+              className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs py-1.5 px-3 rounded-xl transition-all cursor-pointer shadow-xs"
+              title="অন্য প্রার্থীর বা সংরক্ষিত সিভি খুলুন"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              <span>সিভি নির্বাচন / পরিবর্তন</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!user) {
+                  setIsAuthModalOpen(true);
+                } else {
+                  setIsSavedCVsModalOpen(true);
+                }
+              }}
+              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 px-3 rounded-xl transition-all cursor-pointer shadow-xs"
+              title="অন্য কারো জন্য নতুন সিভি শুরু করুন"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>+ অন্যের জন্য সিভি তৈরি করুন</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* TOP BAR: Choose CV Layout Style & Theme Customizer */}
-      <div className="max-w-7xl w-full mx-auto px-4 md:px-6 pt-4 pb-1">
+      <div className="max-w-7xl w-full mx-auto px-4 md:px-6 pt-3 pb-1">
         <StyleSwitcher 
           metadata={cvData.metadata} 
           onChange={handleMetadataChange} 
@@ -494,17 +580,6 @@ export default function App() {
                 </select>
               </div>
 
-              {/* Open in New Tab Button (especially helpful inside iframe preview) */}
-              <button
-                type="button"
-                onClick={() => window.open(window.location.href, '_blank')}
-                className="flex items-center gap-1.5 font-bold text-xs py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs transition-all cursor-pointer"
-                title="নতুন ট্যাবে অ্যাপটি খুলুন যাতে ব্রাউজারের প্রিন্ট ডায়ালগ সরাসরি কাজ করে"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>নতুন ট্যাবে খুলুন (Open in Tab)</span>
-              </button>
-
               {/* Perfect Selectable PDF Print Trigger (Recommended) */}
               <button
                 id="btn-print-pdf"
@@ -543,22 +618,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Iframe Preview Notice Banner */}
-          {isInsideIframe && (
-            <div className="bg-amber-950/80 border-b border-amber-800/80 px-4 py-2 flex items-center justify-between gap-2 text-amber-300 text-xs font-medium flex-wrap">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>প্রিভিউ আইফ্রেমে প্রিন্ট সমস্যা হলে "Download Flat PDF" দিন অথবা "নতুন ট্যাবে খুলুন" বাটনে ক্লিক করে ফুল স্ক্রিনে প্রিন্ট করুন।</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => window.open(window.location.href, '_blank')}
-                className="text-[11px] font-bold text-white bg-amber-800/60 hover:bg-amber-800 px-2.5 py-1 rounded-lg transition-colors cursor-pointer shrink-0"
-              >
-                নতুন ট্যাবে খুলুন →
-              </button>
-            </div>
-          )}
+
 
 
 
@@ -622,9 +682,11 @@ export default function App() {
           onClose={() => setIsSavedCVsModalOpen(false)}
           userId={user.uid}
           currentCvData={cvData}
-          onLoadCV={(loadedCV) => {
-            setCvData(loadedCV);
-            setCloudStatus('saved');
+          currentCvId={currentCvId}
+          currentCvTitle={currentCvTitle}
+          onLoadCV={handleLoadCV}
+          onCreateNewCV={(title, isBlank) => {
+            // Handled inside modal
           }}
         />
       )}

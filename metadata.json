@@ -1,0 +1,6 @@
+{
+  "name": "European CV Builder",
+  "description": "Create, customize, and export professional CVs using Europass Standard, Swiss Minimal, Parisian Chic, Harvard Editorial, Developer Tech, Vibrant Startup, and Elegant Executive Royale templates.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

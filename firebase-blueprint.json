@@ -1,0 +1,22 @@
+{
+  "entities": {
+    "User": {
+      "path": "users/{userId}",
+      "fields": {
+        "email": "string",
+        "displayName": "string",
+        "photoURL": "string?",
+        "createdAt": "timestamp"
+      }
+    },
+    "UserCV": {
+      "path": "users/{userId}/cvs/{cvId}",
+      "fields": {
+        "title": "string",
+        "data": "map",
+        "updatedAt": "timestamp",
+        "createdAt": "timestamp"
+      }
+    }
+  }
+}

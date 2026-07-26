@@ -532,9 +532,16 @@ export function ModernTemplate({ data }: CVTemplateProps) {
                         {edu.school} {edu.location ? `— ${edu.location}` : ''}
                       </p>
                     </div>
-                    <span className="text-xs font-mono bg-zinc-100 text-zinc-600 py-0.5 px-2 rounded font-medium shrink-0">
-                      {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {edu.cgpa && (
+                        <span className="text-xs font-mono font-semibold text-zinc-700">
+                          {edu.cgpa}
+                        </span>
+                      )}
+                      <span className="text-xs font-mono bg-zinc-100 text-zinc-600 py-0.5 px-2 rounded font-medium shrink-0">
+                        {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
+                      </span>
+                    </div>
                   </div>
                   {edu.description && (
                     <p className="text-zinc-600 text-sm whitespace-pre-wrap leading-relaxed mt-1 pl-4 border-l border-zinc-100">
@@ -691,9 +698,16 @@ export function CreativeTemplate({ data }: CVTemplateProps) {
                       <span className="text-xs text-stone-400 font-sans">at</span>
                       <span className="text-sm italic font-medium text-stone-800 font-serif">{edu.school}</span>
                     </div>
-                    <span className="text-xs font-sans text-stone-500 italic shrink-0" style={{ color: accent }}>
-                      {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {edu.cgpa && (
+                        <span className="text-xs font-sans font-semibold text-stone-700">
+                          {edu.cgpa}
+                        </span>
+                      )}
+                      <span className="text-xs font-sans text-stone-500 italic shrink-0" style={{ color: accent }}>
+                        {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
+                      </span>
+                    </div>
                   </div>
                   {edu.location && (
                     <span className="text-[11px] font-sans text-stone-400 uppercase tracking-widest block mb-1">
@@ -865,9 +879,16 @@ export function EditorialTemplate({ data }: CVTemplateProps) {
                     <span className="text-sm italic font-medium text-slate-700">{edu.school}</span>
                     {edu.location && <span className="text-xs text-slate-400 font-sans">({edu.location})</span>}
                   </div>
-                  <span className="text-xs font-sans font-bold text-slate-500 shrink-0">
-                    {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {edu.cgpa && (
+                      <span className="text-xs font-sans font-semibold text-slate-700">
+                        {edu.cgpa}
+                      </span>
+                    )}
+                    <span className="text-xs font-sans font-bold text-slate-500 shrink-0">
+                      {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
+                    </span>
+                  </div>
                 </div>
                 {edu.description && (
                   <p className="text-slate-700 text-xs leading-relaxed whitespace-pre-wrap font-serif">
@@ -1624,8 +1645,15 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
                         <span className="font-bold">{edu.school}</span>
                         {edu.degree && <span>, {edu.degree}</span>}
                       </div>
-                      <div className="text-center text-slate-700 font-medium whitespace-nowrap shrink-0 min-w-[80px]">
-                        {formatDate(edu.startDate)} {edu.startDate && edu.endDate ? '-' : ''} {formatDate(edu.endDate, edu.current)}
+                      <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
+                        {edu.cgpa && (
+                          <span className="font-semibold text-slate-800 text-[11px]">
+                            {edu.cgpa}
+                          </span>
+                        )}
+                        <span className="text-slate-700 font-medium">
+                          {formatDate(edu.startDate)} {edu.startDate && edu.endDate ? '-' : ''} {formatDate(edu.endDate, edu.current)}
+                        </span>
                       </div>
                       <div className="text-right font-semibold shrink-0 min-w-[70px]" style={{ color: accent }}>
                         {edu.location || ''}

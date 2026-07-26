@@ -40,6 +40,7 @@ export const INITIAL_CV_DATA: CVData = {
       school: 'Sorbonne University',
       degree: 'Master of Science in Computer Science',
       location: 'Paris, France',
+      cgpa: '3.85 / 4.00',
       startDate: '2018-09',
       endDate: '2020-06',
       current: false,
@@ -50,8 +51,9 @@ export const INITIAL_CV_DATA: CVData = {
       school: 'University of Lyon',
       degree: 'Bachelor of Science in Information Technology',
       location: 'Lyon, France',
-      startDate: '2015-09',
-      endDate: '2018-06',
+      cgpa: '3.70',
+      startDate: '2015',
+      endDate: '2018',
       current: false,
       description: 'Core foundation in algorithms, databases, discrete mathematics, and networking architectures.'
     }

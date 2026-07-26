@@ -397,6 +397,7 @@ export default function EditorPanel({ data, onUpdate, onClear, onRestore }: Edit
       school: '',
       degree: '',
       location: '',
+      cgpa: '',
       startDate: '',
       endDate: '',
       current: false,
@@ -1093,25 +1094,44 @@ export default function EditorPanel({ data, onUpdate, onClear, onRestore }: Edit
                                   />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">CGPA / Result Point (পয়েন্ট)</label>
+                                  <input 
+                                    type="text" 
+                                    value={edu.cgpa || ''}
+                                    onChange={(e) => updateEducation(edu.id, 'cgpa', e.target.value)}
+                                    placeholder="e.g. 3.80 or 3.85/4.00"
+                                    className="w-full text-xs text-slate-700 border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 focus:outline-hidden focus:border-indigo-500"
+                                  />
+                                </div>
+
+                                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                   <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Start Date</label>
+                                    <div className="flex justify-between items-center mb-0.5">
+                                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Start Date / Year (শুরু)</label>
+                                      <span className="text-[9px] text-slate-400">যেমন: 2018 বা Sep 2018</span>
+                                    </div>
                                     <input 
-                                      type="month" 
+                                      type="text" 
                                       value={edu.startDate}
                                       onChange={(e) => updateEducation(edu.id, 'startDate', e.target.value)}
-                                      className="w-full text-xs text-slate-700 border border-slate-200 bg-white rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-indigo-500"
+                                      placeholder="e.g. 2018 or Sep 2018"
+                                      className="w-full text-xs text-slate-700 border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 focus:outline-hidden focus:border-indigo-500"
                                     />
                                   </div>
 
                                   <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">End Date</label>
+                                    <div className="flex justify-between items-center mb-0.5">
+                                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">End / Passing Year (শেষ/পাস)</label>
+                                      <span className="text-[9px] text-slate-400">যেমন: 2022 বা Jun 2022</span>
+                                    </div>
                                     <input 
-                                      type="month" 
+                                      type="text" 
                                       value={edu.endDate}
                                       disabled={edu.current}
                                       onChange={(e) => updateEducation(edu.id, 'endDate', e.target.value)}
-                                      className={`w-full text-xs text-slate-700 border border-slate-200 bg-white rounded-lg px-2 py-1.5 focus:outline-hidden focus:border-indigo-500 ${edu.current ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                      placeholder="e.g. 2022 or Jun 2022"
+                                      className={`w-full text-xs text-slate-700 border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 focus:outline-hidden focus:border-indigo-500 ${edu.current ? 'opacity-40 cursor-not-allowed' : ''}`}
                                     />
                                   </div>
                                 </div>

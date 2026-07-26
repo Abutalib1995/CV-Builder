@@ -51,6 +51,7 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSavedCVsModalOpen, setIsSavedCVsModalOpen] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastSavedTime, setLastSavedTime] = useState<string>('');
 
   // Listen to Firebase auth state changes
   useEffect(() => {
@@ -84,6 +85,8 @@ export default function App() {
       localStorage.setItem('cv_builder_data', JSON.stringify(cvData));
       localStorage.setItem('cv_builder_current_id', currentCvId);
       localStorage.setItem('cv_builder_current_title', currentCvTitle);
+      const now = new Date();
+      setLastSavedTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (e) {
       console.error('Failed to save CV data to localStorage:', e);
     }
@@ -101,6 +104,24 @@ export default function App() {
       }, 1000); // 1 sec debounce
       return () => clearTimeout(timer);
     }
+  }, [cvData, user, currentCvId, currentCvTitle]);
+
+  // Periodic 2-minute background auto-save timer
+  useEffect(() => {
+    const twoMinuteInterval = setInterval(() => {
+      try {
+        localStorage.setItem('cv_builder_data', JSON.stringify(cvData));
+        if (user) {
+          saveCVVersion(user.uid, currentCvId, currentCvTitle, cvData);
+        }
+        const now = new Date();
+        setLastSavedTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      } catch (e) {
+        console.error('Periodic 2-minute auto-save error:', e);
+      }
+    }, 120000); // Every 2 minutes (120,000 ms)
+
+    return () => clearInterval(twoMinuteInterval);
   }, [cvData, user, currentCvId, currentCvTitle]);
 
   const handleManualCloudSave = async () => {
@@ -377,6 +398,12 @@ export default function App() {
           {/* Quick Info, Auth & Cloud Sync Details */}
           <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
             
+            {/* Auto-Save Status Badge */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold" title="ব্রাউজারে প্রতিটি পরিবর্তন সাথে সাথে এবং প্রতি ২ মিনিটে স্বয়ংক্রিয়ভাবে সংরক্ষিত হয়">
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>অটো সেভ সক্রিয় {lastSavedTime ? `(${lastSavedTime})` : ''}</span>
+            </div>
+
             {/* My Saved CVs Button */}
             <button
               type="button"

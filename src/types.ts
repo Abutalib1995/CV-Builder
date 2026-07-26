@@ -28,6 +28,7 @@ export interface Education {
   school: string;
   degree: string;
   location?: string;
+  cgpa?: string;
   startDate: string;
   endDate: string;
   current: boolean;

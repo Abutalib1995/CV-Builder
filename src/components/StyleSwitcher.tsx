@@ -13,7 +13,7 @@ export default function StyleSwitcher({ metadata, onChange }: StyleSwitcherProps
   const currentFontScale = getFontScaleNumber(metadata.fontSize);
 
   const updateFontScale = (newScale: number) => {
-    const clamped = Math.max(75, Math.min(125, newScale));
+    const clamped = Math.max(50, Math.min(125, newScale));
     onChange({ ...metadata, fontSize: clamped });
   };
   const templates = [
@@ -181,7 +181,7 @@ export default function StyleSwitcher({ metadata, onChange }: StyleSwitcherProps
           <div className="flex items-center justify-between">
             <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <Type className="w-3.5 h-3.5 text-purple-500" />
-              <span>A4 Print Font Scale (%)</span>
+              <span>Font & Line Gap Scale (%)</span>
             </label>
             <span className="text-xs font-extrabold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-md font-mono">
               {currentFontScale}%
@@ -191,7 +191,7 @@ export default function StyleSwitcher({ metadata, onChange }: StyleSwitcherProps
           <div className="flex flex-wrap items-center gap-2">
             {/* Presets */}
             <div className="flex flex-wrap gap-1">
-              {[92, 95, 98, 100, 105, 110].map((scaleVal) => {
+              {[50, 60, 70, 80, 90, 100, 110, 120].map((scaleVal) => {
                 const isSelected = currentFontScale === scaleVal;
                 return (
                   <button
@@ -223,7 +223,7 @@ export default function StyleSwitcher({ metadata, onChange }: StyleSwitcherProps
 
               <input
                 type="range"
-                min="80"
+                min="50"
                 max="120"
                 step="1"
                 value={currentFontScale}

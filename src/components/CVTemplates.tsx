@@ -28,6 +28,23 @@ export function formatDate(dateStr: string, isCurrent: boolean = false): string 
   return dateStr;
 }
 
+// Helper to format date range safely without trailing dashes or empty gaps
+export function formatDateRange(startDate?: string, endDate?: string, isCurrent: boolean = false, separator: string = '–'): string {
+  const start = formatDate(startDate || '');
+  const end = formatDate(endDate || '', isCurrent);
+  if (start && end) return `${start} ${separator} ${end}`;
+  if (start) return start;
+  if (end) return end;
+  return '';
+}
+
+// Helper to check if only 1 date is provided (for centering single dates)
+export function isSingleDate(startDate?: string, endDate?: string, isCurrent: boolean = false): boolean {
+  const start = formatDate(startDate || '');
+  const end = formatDate(endDate || '', isCurrent);
+  return (Boolean(start) && !Boolean(end)) || (!Boolean(start) && Boolean(end));
+}
+
 // Helper to compute font scale number (e.g. 100, 98, 95)
 export function getFontScaleNumber(fontSizeSetting: string | number | undefined): number {
   if (typeof fontSizeSetting === 'number') return fontSizeSetting;
@@ -39,16 +56,50 @@ export function getFontScaleNumber(fontSizeSetting: string | number | undefined)
   return isNaN(parsed) ? 100 : parsed;
 }
 
+// Helper to compute font scale number and associated tight line heights / spacings
+export function getScaledStyles(fontScaleSetting: string | number | undefined) {
+  const fontScale = getFontScaleNumber(fontScaleSetting);
+  const scaleRatio = fontScale / 100;
+  
+  const isScaledDown = scaleRatio < 1;
+
+  // Responsive line height formula (line spacing / line gap):
+  // At 100%: 1.18
+  // At 90%:  1.08
+  // At 80%:  1.00
+  // At 70%:  0.90
+  // At 50%:  0.70
+  const lineHeight = isScaledDown
+    ? Math.max(0.70, 1.18 * scaleRatio)
+    : Math.max(1.10, 1.18 * scaleRatio);
+
+  // Keep standard page margins (top, bottom, left, right padding) comfortable
+  const padding = `${Math.max(1.2, 2.25 * scaleRatio).toFixed(2)}rem`;
+
+  // Gap between main sections in rem:
+  const gap = `${Math.max(0.35, 1.25 * scaleRatio).toFixed(2)}rem`;
+
+  return { fontScale, scaleRatio, lineHeight, padding, gap };
+}
+
 // --- 1. CLASSIC TEMPLATE: EUROPASS STANDARD ---
 export function ClassicTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, leadership, achievements, references, customSections, metadata } = data;
   const accent = metadata.accentColor || '#1e3a8a';
-  const fontScale = getFontScaleNumber(metadata.fontSize);
+  const { fontScale, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
   const sectionOrder = getEffectiveSectionOrder(data);
   const hiddenSections = data.hiddenSections || [];
 
   return (
-    <div className="font-sans text-slate-800 bg-white min-h-[297mm] p-10 flex flex-col gap-6" style={{ zoom: fontScale / 100, fontSize: `${fontScale}%` }}>
+    <div 
+      className="font-sans text-slate-800 bg-white min-h-[297mm] flex flex-col" 
+      style={{ 
+        fontSize: `${fontScale}%`, 
+        lineHeight,
+        padding,
+        gap
+      }}
+    >
       
       {/* Header Grid: Europass standard layout */}
       <div className="grid grid-cols-12 gap-6 pb-6 border-b border-slate-200">
@@ -127,7 +178,7 @@ export function ClassicTemplate({ data }: CVTemplateProps) {
               <div className="col-span-3 text-right pr-4 font-bold uppercase tracking-wider text-xs" style={{ color: accent }}>
                 {getSectionDisplayTitle('summary', data)}
               </div>
-              <div className="col-span-9 text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">
+              <div className="col-span-9 text-slate-700 text-sm whitespace-pre-wrap">
                 {personalInfo.summary}
               </div>
             </div>
@@ -153,7 +204,7 @@ export function ClassicTemplate({ data }: CVTemplateProps) {
                     <div className="text-sm font-semibold text-slate-700 mb-2">
                       {exp.company} {exp.location ? `| ${exp.location}` : ''}
                     </div>
-                    <div className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">
+                    <div className="text-slate-600 text-sm whitespace-pre-wrap">
                       {exp.description}
                     </div>
                   </div>
@@ -170,25 +221,41 @@ export function ClassicTemplate({ data }: CVTemplateProps) {
                 {getSectionDisplayTitle('education', data)}
               </div>
               <div className="col-span-9 flex flex-col gap-6 border-l-2 border-slate-100 pl-6 -ml-[1px]">
-                {education.map((edu) => (
-                  <div key={edu.id} className="relative page-break-avoid">
-                    <div className="absolute -left-[31px] top-1.5 w-2.5 h-2.5 rounded-full border-2 bg-white" style={{ borderColor: accent }} />
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-baseline gap-1 mb-1">
-                      <h3 className="text-base font-bold text-slate-900">{edu.degree}</h3>
-                      <div className="text-xs font-medium text-slate-500 bg-slate-100 py-0.5 px-2 rounded shrink-0">
-                        {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
+                {education.map((edu) => {
+                  const dateStr = formatDateRange(edu.startDate, edu.endDate, edu.current, '–');
+                  const isSingle = isSingleDate(edu.startDate, edu.endDate, edu.current);
+                  return (
+                    <div key={edu.id} className="relative page-break-avoid">
+                      <div className="absolute -left-[31px] top-1.5 w-2.5 h-2.5 rounded-full border-2 bg-white" style={{ borderColor: accent }} />
+                      <div className="flex flex-col md:flex-row md:justify-between md:items-baseline gap-1 mb-1">
+                        <div>
+                          <h3 className="text-base font-bold text-slate-900">{edu.degree}</h3>
+                          <div className="text-sm font-semibold text-slate-700 flex items-center gap-2 flex-wrap">
+                            {edu.school && <span>{edu.school}</span>}
+                            {edu.location && <span className="text-slate-400">| {edu.location}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {edu.cgpa && (
+                            <div className="text-xs font-semibold text-slate-700 bg-slate-100 py-0.5 px-2 rounded shrink-0 border border-slate-200">
+                              CGPA: {edu.cgpa}
+                            </div>
+                          )}
+                          {dateStr && (
+                            <div className={`text-xs font-medium text-slate-500 bg-slate-100 py-0.5 px-2 rounded shrink-0 ${isSingle ? 'text-center min-w-[70px]' : ''}`}>
+                              {dateStr}
+                            </div>
+                          )}
+                        </div>
                       </div>
+                      {edu.description && (
+                        <div className="text-slate-600 text-sm whitespace-pre-wrap mt-1">
+                          {edu.description}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-sm font-semibold text-slate-700 mb-1">
-                      {edu.school} {edu.location ? `| ${edu.location}` : ''}
-                    </div>
-                    {edu.description && (
-                      <div className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed mt-1">
-                        {edu.description}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -245,19 +312,30 @@ export function ClassicTemplate({ data }: CVTemplateProps) {
                 {getSectionDisplayTitle('leadership', data)}
               </div>
               <div className="col-span-9 flex flex-col gap-4 border-l-2 border-slate-100 pl-6 -ml-[1px]">
-                {leadership.map((lead) => (
-                  <div key={lead.id} className="relative page-break-avoid">
-                    <div className="absolute -left-[31px] top-1.5 w-2.5 h-2.5 rounded-full border-2 bg-white" style={{ borderColor: accent }} />
-                    <div className="flex justify-between items-baseline gap-1 mb-1">
-                      <h3 className="text-base font-bold text-slate-900">{lead.position}</h3>
-                      <div className="text-xs font-medium text-slate-500 bg-slate-100 py-0.5 px-2 rounded shrink-0">
-                        {formatDate(lead.startDate)} – {formatDate(lead.endDate, lead.current)}
-                      </div>
+                {leadership.map((lead) => {
+                  const dateStr = formatDateRange(lead.startDate, lead.endDate, lead.current, '–');
+                  const hasPosition = Boolean(lead.position);
+                  const hasCompany = Boolean(lead.company);
+                  if (!hasPosition && !hasCompany && !lead.description && !dateStr) return null;
+
+                  return (
+                    <div key={lead.id} className="relative page-break-avoid">
+                      <div className="absolute -left-[31px] top-1.5 w-2.5 h-2.5 rounded-full border-2 bg-white" style={{ borderColor: accent }} />
+                      {(hasPosition || dateStr) && (
+                        <div className="flex justify-between items-baseline gap-1 mb-1">
+                          {hasPosition ? <h3 className="text-base font-bold text-slate-900">{lead.position}</h3> : <div />}
+                          {dateStr && (
+                            <div className="text-xs font-medium text-slate-500 bg-slate-100 py-0.5 px-2 rounded shrink-0">
+                              {dateStr}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {hasCompany && <div className="text-sm font-semibold text-slate-700 mb-1">{lead.company}</div>}
+                      {lead.description && <div className="text-slate-600 text-sm whitespace-pre-wrap">{lead.description}</div>}
                     </div>
-                    <div className="text-sm font-semibold text-slate-700 mb-1">{lead.company}</div>
-                    {lead.description && <div className="text-slate-600 text-sm whitespace-pre-wrap">{lead.description}</div>}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -273,7 +351,7 @@ export function ClassicTemplate({ data }: CVTemplateProps) {
                 {achievements.map((ach) => (
                   <div key={ach.id} className="text-xs text-slate-800">
                     <span className="font-bold text-slate-900">{ach.title}</span>
-                    {ach.description ? `: ${ach.description}` : ''}
+                    {ach.title && ach.description ? `: ${ach.description}` : ach.description || ''}
                   </div>
                 ))}
               </div>
@@ -288,14 +366,19 @@ export function ClassicTemplate({ data }: CVTemplateProps) {
                 {getSectionDisplayTitle('references', data)}
               </div>
               <div className="col-span-9 border-l-2 border-slate-100 pl-6 -ml-[1px] grid grid-cols-2 gap-4 text-xs">
-                {references.map((ref) => (
-                  <div key={ref.id}>
-                    <p className="font-bold text-slate-900">{ref.name}</p>
-                    <p className="text-slate-600">{ref.title}{ref.organization ? `, ${ref.organization}` : ''}</p>
-                    {ref.phone && <p className="text-slate-500">Tel: {ref.phone}</p>}
-                    {ref.email && <p className="text-slate-500">Email: {ref.email}</p>}
-                  </div>
-                ))}
+                {references.map((ref) => {
+                  const titleAndOrg = ref.title && ref.organization
+                    ? `${ref.title}, ${ref.organization}`
+                    : ref.title || ref.organization || '';
+                  return (
+                    <div key={ref.id}>
+                      {ref.name && <p className="font-bold text-slate-900">{ref.name}</p>}
+                      {titleAndOrg && <p className="text-slate-600">{titleAndOrg}</p>}
+                      {ref.phone && <p className="text-slate-500">Tel: {ref.phone}</p>}
+                      {ref.email && <p className="text-slate-500">Email: {ref.email}</p>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -323,7 +406,7 @@ export function ClassicTemplate({ data }: CVTemplateProps) {
                       )}
                     </div>
                     {item.subtitle && <p className="text-sm font-semibold text-slate-700 mb-1">{item.subtitle}</p>}
-                    {item.description && <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed mt-1">{item.description}</p>}
+                    {item.description && <p className="text-slate-600 text-sm whitespace-pre-wrap mt-1">{item.description}</p>}
                   </div>
                 ))}
               </div>
@@ -343,10 +426,16 @@ export function ClassicTemplate({ data }: CVTemplateProps) {
 export function ModernTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#374151';
-  const fontScale = getFontScaleNumber(metadata.fontSize);
+  const { fontScale, lineHeight } = getScaledStyles(metadata.fontSize);
 
   return (
-    <div className="font-sans text-zinc-800 bg-white min-h-[297mm] grid grid-cols-12" style={{ zoom: fontScale / 100, fontSize: `${fontScale}%` }}>
+    <div 
+      className="font-sans text-zinc-800 bg-white min-h-[297mm] grid grid-cols-12" 
+      style={{ 
+        fontSize: `${fontScale}%`, 
+        lineHeight 
+      }}
+    >
       
       {/* Sidebar: Left Column (4/12) */}
       <div className="col-span-4 bg-zinc-50 border-r border-zinc-200 p-6 flex flex-col gap-6 h-full">
@@ -479,7 +568,7 @@ export function ModernTemplate({ data }: CVTemplateProps) {
         {personalInfo.summary && (
           <div className="flex flex-col gap-2">
             <h2 className="text-xs uppercase font-bold tracking-wider text-zinc-400">Profile</h2>
-            <p className="text-zinc-600 text-sm leading-relaxed border-l-2 pl-4 py-0.5" style={{ borderColor: accent }}>
+            <p className="text-zinc-600 text-sm border-l-2 pl-4 py-0.5" style={{ borderColor: accent }}>
               {personalInfo.summary}
             </p>
           </div>
@@ -506,7 +595,7 @@ export function ModernTemplate({ data }: CVTemplateProps) {
                       {formatDate(exp.startDate)} – {formatDate(exp.endDate, exp.current)}
                     </span>
                   </div>
-                  <p className="text-zinc-600 text-sm whitespace-pre-wrap leading-relaxed mt-2 pl-4 border-l border-zinc-100">
+                  <p className="text-zinc-600 text-sm whitespace-pre-wrap mt-2 pl-4 border-l border-zinc-100">
                     {exp.description}
                   </p>
                 </div>
@@ -523,33 +612,39 @@ export function ModernTemplate({ data }: CVTemplateProps) {
               Education & Academic
             </h2>
             <div className="flex flex-col gap-5">
-              {education.map((edu) => (
-                <div key={edu.id} className="page-break-avoid">
-                  <div className="flex justify-between items-start gap-2 mb-1">
-                    <div>
-                      <h3 className="text-base font-bold text-zinc-900">{edu.degree}</h3>
-                      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                        {edu.school} {edu.location ? `— ${edu.location}` : ''}
+              {education.map((edu) => {
+                const dateStr = formatDateRange(edu.startDate, edu.endDate, edu.current, '–');
+                const isSingle = isSingleDate(edu.startDate, edu.endDate, edu.current);
+                return (
+                  <div key={edu.id} className="page-break-avoid">
+                    <div className="flex justify-between items-start gap-2 mb-1">
+                      <div>
+                        <h3 className="text-base font-bold text-zinc-900">{edu.degree}</h3>
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider flex items-center gap-2 flex-wrap">
+                          <span>{edu.school} {edu.location ? `— ${edu.location}` : ''}</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {edu.cgpa && (
+                          <span className="text-xs font-mono font-semibold text-zinc-700 bg-zinc-100 py-0.5 px-2 rounded border border-zinc-200">
+                            CGPA: {edu.cgpa}
+                          </span>
+                        )}
+                        {dateStr && (
+                          <span className={`text-xs font-mono bg-zinc-100 text-zinc-600 py-0.5 px-2 rounded font-medium shrink-0 ${isSingle ? 'text-center min-w-[70px] inline-block' : ''}`}>
+                            {dateStr}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {edu.description && (
+                      <p className="text-zinc-600 text-sm whitespace-pre-wrap mt-1 pl-4 border-l border-zinc-100">
+                        {edu.description}
                       </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {edu.cgpa && (
-                        <span className="text-xs font-mono font-semibold text-zinc-700">
-                          {edu.cgpa}
-                        </span>
-                      )}
-                      <span className="text-xs font-mono bg-zinc-100 text-zinc-600 py-0.5 px-2 rounded font-medium shrink-0">
-                        {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
-                      </span>
-                    </div>
+                    )}
                   </div>
-                  {edu.description && (
-                    <p className="text-zinc-600 text-sm whitespace-pre-wrap leading-relaxed mt-1 pl-4 border-l border-zinc-100">
-                      {edu.description}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -564,10 +659,18 @@ export function ModernTemplate({ data }: CVTemplateProps) {
 export function CreativeTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#581c87';
-  const fontScale = getFontScaleNumber(metadata.fontSize);
+  const { fontScale, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
 
   return (
-    <div className="font-serif text-stone-800 bg-[#FAF9F6] min-h-[297mm] p-12 flex flex-col gap-8 shadow-inner" style={{ zoom: fontScale / 100, fontSize: `${fontScale}%` }}>
+    <div 
+      className="font-serif text-stone-800 bg-[#FAF9F6] min-h-[297mm] flex flex-col shadow-inner" 
+      style={{ 
+        fontSize: `${fontScale}%`, 
+        lineHeight,
+        padding,
+        gap
+      }}
+    >
       
       {/* Header Panel - Elegantly Centered */}
       <div className="flex flex-col items-center text-center border-b border-stone-200 pb-6">
@@ -634,7 +737,7 @@ export function CreativeTemplate({ data }: CVTemplateProps) {
 
       {/* Summary / Introduction */}
       {personalInfo.summary && (
-        <div className="max-w-2xl mx-auto text-center font-serif text-stone-600 text-[13px] leading-relaxed italic border-b border-stone-100 pb-6">
+        <div className="max-w-2xl mx-auto text-center font-serif text-stone-600 text-[13px] italic border-b border-stone-100 pb-6">
           "{personalInfo.summary}"
         </div>
       )}
@@ -670,7 +773,7 @@ export function CreativeTemplate({ data }: CVTemplateProps) {
                       {exp.location}
                     </span>
                   )}
-                  <p className="text-stone-600 text-xs leading-relaxed font-serif whitespace-pre-wrap pl-3 border-l border-stone-200 italic">
+                  <p className="text-stone-600 text-xs font-serif whitespace-pre-wrap pl-3 border-l border-stone-200 italic">
                     {exp.description}
                   </p>
                 </div>
@@ -690,37 +793,43 @@ export function CreativeTemplate({ data }: CVTemplateProps) {
             </div>
             
             <div className="flex flex-col gap-5 max-w-3xl mx-auto w-full">
-              {education.map((edu) => (
-                <div key={edu.id} className="page-break-avoid">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1">
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <h3 className="text-base font-semibold text-stone-950 font-serif">{edu.degree}</h3>
-                      <span className="text-xs text-stone-400 font-sans">at</span>
-                      <span className="text-sm italic font-medium text-stone-800 font-serif">{edu.school}</span>
+              {education.map((edu) => {
+                const dateStr = formatDateRange(edu.startDate, edu.endDate, edu.current, '–');
+                const isSingle = isSingleDate(edu.startDate, edu.endDate, edu.current);
+                return (
+                  <div key={edu.id} className="page-break-avoid">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <h3 className="text-base font-semibold text-stone-950 font-serif">{edu.degree}</h3>
+                        <span className="text-xs text-stone-400 font-sans">at</span>
+                        <span className="text-sm italic font-medium text-stone-800 font-serif">{edu.school}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {edu.cgpa && (
+                          <span className="text-xs font-sans font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
+                            CGPA: {edu.cgpa}
+                          </span>
+                        )}
+                        {dateStr && (
+                          <span className={`text-xs font-sans text-stone-500 italic shrink-0 ${isSingle ? 'text-center min-w-[70px] inline-block' : ''}`} style={{ color: accent }}>
+                            {dateStr}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {edu.cgpa && (
-                        <span className="text-xs font-sans font-semibold text-stone-700">
-                          {edu.cgpa}
-                        </span>
-                      )}
-                      <span className="text-xs font-sans text-stone-500 italic shrink-0" style={{ color: accent }}>
-                        {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
+                    {edu.location && (
+                      <span className="text-[11px] font-sans text-stone-400 uppercase tracking-widest block mb-1">
+                        {edu.location}
                       </span>
-                    </div>
+                    )}
+                    {edu.description && (
+                      <p className="text-stone-600 text-xs font-serif whitespace-pre-wrap pl-3 border-l border-stone-200 italic mt-1">
+                        {edu.description}
+                      </p>
+                    )}
                   </div>
-                  {edu.location && (
-                    <span className="text-[11px] font-sans text-stone-400 uppercase tracking-widest block mb-1">
-                      {edu.location}
-                    </span>
-                  )}
-                  {edu.description && (
-                    <p className="text-stone-600 text-xs leading-relaxed font-serif whitespace-pre-wrap pl-3 border-l border-stone-200 italic mt-1">
-                      {edu.description}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -781,10 +890,18 @@ export function CreativeTemplate({ data }: CVTemplateProps) {
 export function EditorialTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#1e3a8a';
-  const fontScale = getFontScaleNumber(metadata.fontSize);
+  const { fontScale, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
 
   return (
-    <div className="font-serif text-slate-900 bg-white min-h-[297mm] p-12 flex flex-col gap-6" style={{ zoom: fontScale / 100, fontSize: `${fontScale}%` }}>
+    <div 
+      className="font-serif text-slate-900 bg-white min-h-[297mm] flex flex-col" 
+      style={{ 
+        fontSize: `${fontScale}%`, 
+        lineHeight,
+        padding,
+        gap
+      }}
+    >
       {/* Centered Name and Contact Info */}
       <div className="flex flex-col items-center text-center">
         <h1 className="text-3xl font-normal tracking-wide text-slate-950 uppercase border-b-2 border-double pb-2 mb-3 w-full" style={{ borderColor: accent }}>
@@ -829,7 +946,7 @@ export function EditorialTemplate({ data }: CVTemplateProps) {
 
       {/* Summary */}
       {personalInfo.summary && (
-        <div className="mt-2 text-slate-800 text-sm leading-relaxed border-l-4 pl-4 italic" style={{ borderColor: accent }}>
+        <div className="mt-2 text-slate-800 text-sm border-l-4 pl-4 italic" style={{ borderColor: accent }}>
           {personalInfo.summary}
         </div>
       )}
@@ -854,7 +971,7 @@ export function EditorialTemplate({ data }: CVTemplateProps) {
                     {formatDate(exp.startDate)} – {formatDate(exp.endDate, exp.current)}
                   </span>
                 </div>
-                <p className="text-slate-700 text-xs leading-relaxed whitespace-pre-wrap font-serif">
+                <p className="text-slate-700 text-xs whitespace-pre-wrap font-serif">
                   {exp.description}
                 </p>
               </div>
@@ -870,33 +987,39 @@ export function EditorialTemplate({ data }: CVTemplateProps) {
             Education & Academic Background
           </h2>
           <div className="flex flex-col gap-4">
-            {education.map((edu) => (
-              <div key={edu.id} className="page-break-avoid">
-                <div className="flex justify-between items-baseline mb-1">
-                  <div className="flex items-baseline gap-1.5 flex-wrap">
-                    <h3 className="text-sm font-bold text-slate-950 uppercase">{edu.degree}</h3>
-                    <span className="text-xs text-slate-400">—</span>
-                    <span className="text-sm italic font-medium text-slate-700">{edu.school}</span>
-                    {edu.location && <span className="text-xs text-slate-400 font-sans">({edu.location})</span>}
+            {education.map((edu) => {
+              const dateStr = formatDateRange(edu.startDate, edu.endDate, edu.current, '–');
+              const isSingle = isSingleDate(edu.startDate, edu.endDate, edu.current);
+              return (
+                <div key={edu.id} className="page-break-avoid">
+                  <div className="flex justify-between items-baseline mb-1">
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <h3 className="text-sm font-bold text-slate-950 uppercase">{edu.degree}</h3>
+                      <span className="text-xs text-slate-400">—</span>
+                      <span className="text-sm italic font-medium text-slate-700">{edu.school}</span>
+                      {edu.location && <span className="text-xs text-slate-400 font-sans">({edu.location})</span>}
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      {edu.cgpa && (
+                        <span className="text-xs font-sans font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          CGPA: {edu.cgpa}
+                        </span>
+                      )}
+                      {dateStr && (
+                        <span className={`text-xs font-sans font-bold text-slate-500 shrink-0 ${isSingle ? 'text-center min-w-[70px] inline-block' : ''}`}>
+                          {dateStr}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {edu.cgpa && (
-                      <span className="text-xs font-sans font-semibold text-slate-700">
-                        {edu.cgpa}
-                      </span>
-                    )}
-                    <span className="text-xs font-sans font-bold text-slate-500 shrink-0">
-                      {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
-                    </span>
-                  </div>
+                  {edu.description && (
+                    <p className="text-slate-700 text-xs whitespace-pre-wrap font-serif">
+                      {edu.description}
+                    </p>
+                  )}
                 </div>
-                {edu.description && (
-                  <p className="text-slate-700 text-xs leading-relaxed whitespace-pre-wrap font-serif">
-                    {edu.description}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -948,10 +1071,18 @@ export function EditorialTemplate({ data }: CVTemplateProps) {
 export function TechTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#0ea5e9';
-  const fontScale = getFontScaleNumber(metadata.fontSize);
+  const { fontScale, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
 
   return (
-    <div className="font-sans text-slate-800 bg-white min-h-[297mm] p-10 flex flex-col gap-6" style={{ zoom: fontScale / 100, fontSize: `${fontScale}%` }}>
+    <div 
+      className="font-sans text-slate-800 bg-white min-h-[297mm] flex flex-col" 
+      style={{ 
+        fontSize: `${fontScale}%`, 
+        lineHeight,
+        padding,
+        gap
+      }}
+    >
       
       {/* Tech-Branded Header Block */}
       <div className="flex flex-col md:flex-row justify-between items-start gap-4 border-b-2 border-slate-900 pb-5">
@@ -1001,7 +1132,7 @@ export function TechTemplate({ data }: CVTemplateProps) {
 
       {/* Profile summary */}
       {personalInfo.summary && (
-        <div className="bg-slate-50/50 border border-slate-100 rounded-xl p-4 text-slate-700 text-sm leading-relaxed relative overflow-hidden">
+        <div className="bg-slate-50/50 border border-slate-100 rounded-xl p-4 text-slate-700 text-sm relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: accent }} />
           <span className="font-mono text-[10px] font-bold text-slate-400 block mb-1">01 // PROFILE SUMMARY</span>
           {personalInfo.summary}
@@ -1032,7 +1163,7 @@ export function TechTemplate({ data }: CVTemplateProps) {
                   {exp.company} {exp.location ? `| ${exp.location}` : ''}
                 </div>
                 
-                <p className="text-slate-600 text-xs leading-relaxed whitespace-pre-wrap font-sans">
+                <p className="text-slate-600 text-xs whitespace-pre-wrap font-sans">
                   {exp.description}
                 </p>
               </div>
@@ -1049,28 +1180,41 @@ export function TechTemplate({ data }: CVTemplateProps) {
             <span className="text-slate-900">Education Background</span>
           </h2>
           <div className="flex flex-col gap-5 pl-1.5 border-l-2 border-slate-100 ml-1">
-            {education.map((edu) => (
-              <div key={edu.id} className="relative page-break-avoid pl-5">
-                <div className="absolute -left-[10px] top-1.5 w-4 h-1.5 rounded-full bg-white border border-slate-300" style={{ borderColor: accent }} />
-                
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1">
-                  <h3 className="text-base font-bold text-slate-950">{edu.degree}</h3>
-                  <span className="font-mono text-xs font-bold py-0.5 px-2 bg-slate-100 text-slate-600 rounded shrink-0">
-                    [{formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}]
-                  </span>
+            {education.map((edu) => {
+              const dateStr = formatDateRange(edu.startDate, edu.endDate, edu.current, '–');
+              const isSingle = isSingleDate(edu.startDate, edu.endDate, edu.current);
+              return (
+                <div key={edu.id} className="relative page-break-avoid pl-5">
+                  <div className="absolute -left-[10px] top-1.5 w-4 h-1.5 rounded-full bg-white border border-slate-300" style={{ borderColor: accent }} />
+                  
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline mb-1 gap-1">
+                    <h3 className="text-base font-bold text-slate-950">{edu.degree}</h3>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {edu.cgpa && (
+                        <span className="font-mono text-xs font-bold py-0.5 px-2 bg-slate-100 text-slate-700 border border-slate-200 rounded shrink-0">
+                          CGPA: {edu.cgpa}
+                        </span>
+                      )}
+                      {dateStr && (
+                        <span className={`font-mono text-xs font-bold py-0.5 px-2 bg-slate-100 text-slate-600 rounded shrink-0 ${isSingle ? 'text-center min-w-[70px] inline-block' : ''}`}>
+                          [{dateStr}]
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="font-mono text-xs font-semibold text-slate-500 mb-2">
+                    {edu.school} {edu.location ? `| ${edu.location}` : ''}
+                  </div>
+                  
+                  {edu.description && (
+                    <p className="text-slate-600 text-xs whitespace-pre-wrap font-sans">
+                      {edu.description}
+                    </p>
+                  )}
                 </div>
-                
-                <div className="font-mono text-xs font-semibold text-slate-500 mb-2">
-                  {edu.school} {edu.location ? `| ${edu.location}` : ''}
-                </div>
-                
-                {edu.description && (
-                  <p className="text-slate-600 text-xs leading-relaxed whitespace-pre-wrap font-sans">
-                    {edu.description}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -1145,10 +1289,16 @@ function adjustColorBrightness(hex: string, percent: number): string {
 export function VibrantTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#3b82f6';
-  const fontScale = getFontScaleNumber(metadata.fontSize);
+  const { fontScale, lineHeight } = getScaledStyles(metadata.fontSize);
 
   return (
-    <div className="font-sans text-slate-800 bg-white min-h-[297mm] flex flex-row" style={{ zoom: fontScale / 100, fontSize: `${fontScale}%` }}>
+    <div 
+      className="font-sans text-slate-800 bg-white min-h-[297mm] flex flex-row" 
+      style={{ 
+        fontSize: `${fontScale}%`, 
+        lineHeight 
+      }}
+    >
       
       {/* Left Sidebar (35% width) - Colorful Gradient */}
       <div className="w-[35%] text-white p-8 flex flex-col gap-6 shrink-0 relative overflow-hidden" 
@@ -1264,7 +1414,7 @@ export function VibrantTemplate({ data }: CVTemplateProps) {
               <span className="w-1.5 h-3 rounded-full" style={{ backgroundColor: accent }} />
               About Me
             </h2>
-            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
+            <p className="text-slate-600 text-sm whitespace-pre-wrap">
               {personalInfo.summary}
             </p>
           </div>
@@ -1294,7 +1444,7 @@ export function VibrantTemplate({ data }: CVTemplateProps) {
                     {exp.company} {exp.location ? `• ${exp.location}` : ''}
                   </p>
                   
-                  <p className="text-slate-600 text-xs leading-relaxed whitespace-pre-wrap">
+                  <p className="text-slate-600 text-xs whitespace-pre-wrap">
                     {exp.description}
                   </p>
                 </div>
@@ -1311,29 +1461,42 @@ export function VibrantTemplate({ data }: CVTemplateProps) {
               Education & Background
             </h2>
             <div className="flex flex-col gap-5 border-l border-slate-100 pl-4 ml-1">
-              {education.map((edu) => (
-                <div key={edu.id} className="relative page-break-avoid">
-                  {/* Outer timeline ring */}
-                  <div className="absolute -left-[21px] top-1.5 w-3.5 h-3.5 rounded-full bg-white border-2" style={{ borderColor: accent }} />
-                  
-                  <div className="flex justify-between items-baseline mb-1 flex-wrap gap-x-2">
-                    <h3 className="text-base font-extrabold text-slate-900">{edu.degree}</h3>
-                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-50 text-slate-500 border border-slate-100">
-                      {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
-                    </span>
-                  </div>
-                  
-                  <p className="text-xs font-bold text-slate-500 mb-2">
-                    {edu.school} {edu.location ? `• ${edu.location}` : ''}
-                  </p>
-                  
-                  {edu.description && (
-                    <p className="text-slate-600 text-xs leading-relaxed whitespace-pre-wrap">
-                      {edu.description}
+              {education.map((edu) => {
+                const dateStr = formatDateRange(edu.startDate, edu.endDate, edu.current, '–');
+                const isSingle = isSingleDate(edu.startDate, edu.endDate, edu.current);
+                return (
+                  <div key={edu.id} className="relative page-break-avoid">
+                    {/* Outer timeline ring */}
+                    <div className="absolute -left-[21px] top-1.5 w-3.5 h-3.5 rounded-full bg-white border-2" style={{ borderColor: accent }} />
+                    
+                    <div className="flex justify-between items-baseline mb-1 flex-wrap gap-x-2">
+                      <h3 className="text-base font-extrabold text-slate-900">{edu.degree}</h3>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {edu.cgpa && (
+                          <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            CGPA: {edu.cgpa}
+                          </span>
+                        )}
+                        {dateStr && (
+                          <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-50 text-slate-500 border border-slate-100 ${isSingle ? 'text-center min-w-[70px] inline-block' : ''}`}>
+                            {dateStr}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <p className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-2 flex-wrap">
+                      <span>{edu.school} {edu.location ? `• ${edu.location}` : ''}</span>
                     </p>
-                  )}
-                </div>
-              ))}
+                    
+                    {edu.description && (
+                      <p className="text-slate-600 text-xs whitespace-pre-wrap">
+                        {edu.description}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1347,10 +1510,18 @@ export function VibrantTemplate({ data }: CVTemplateProps) {
 export function ElegantTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#1e3a8a';
-  const fontScale = getFontScaleNumber(metadata.fontSize);
+  const { fontScale, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
 
   return (
-    <div className="font-sans text-slate-800 bg-white min-h-[297mm] p-10 flex flex-col gap-6 relative animate-fade-in" style={{ zoom: fontScale / 100, fontSize: `${fontScale}%` }}>
+    <div 
+      className="font-sans text-slate-800 bg-white min-h-[297mm] flex flex-col relative animate-fade-in" 
+      style={{ 
+        fontSize: `${fontScale}%`, 
+        lineHeight,
+        padding,
+        gap
+      }}
+    >
       
       {/* Outer border decoration for an elite executive feel */}
       <div className="absolute inset-4 border-2 pointer-events-none rounded" style={{ borderColor: `${accent}15` }} />
@@ -1421,7 +1592,7 @@ export function ElegantTemplate({ data }: CVTemplateProps) {
                 <span className="w-2 h-2 rounded bg-amber-500" />
                 Executive Summary
               </h2>
-              <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
+              <p className="text-slate-600 text-sm whitespace-pre-wrap">
                 {personalInfo.summary}
               </p>
             </div>
@@ -1457,7 +1628,7 @@ export function ElegantTemplate({ data }: CVTemplateProps) {
                       )}
                     </div>
                     
-                    <p className="text-slate-600 text-xs leading-relaxed whitespace-pre-wrap mt-1.5">
+                    <p className="text-slate-600 text-xs whitespace-pre-wrap mt-1.5">
                       {exp.description}
                     </p>
                   </div>
@@ -1474,34 +1645,47 @@ export function ElegantTemplate({ data }: CVTemplateProps) {
                 Academic Background
               </h2>
               <div className="flex flex-col gap-5">
-                {education.map((edu) => (
-                  <div key={edu.id} className="page-break-avoid flex flex-col gap-1 relative pl-4 border-l-2" style={{ borderColor: `${accent}15` }}>
-                    <div className="absolute -left-1.5 top-1.5 w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    
-                    <div className="flex justify-between items-baseline flex-wrap gap-x-2">
-                      <h3 className="text-base font-bold text-slate-950">{edu.degree}</h3>
-                      <span className="text-xs font-semibold text-slate-500">
-                        {formatDate(edu.startDate)} – {formatDate(edu.endDate, edu.current)}
-                      </span>
-                    </div>
-                    
-                    <div className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                      <span>{edu.school}</span>
-                      {edu.location && (
-                        <>
-                          <span>•</span>
-                          <span>{edu.location}</span>
-                        </>
+                {education.map((edu) => {
+                  const dateStr = formatDateRange(edu.startDate, edu.endDate, edu.current, '–');
+                  const isSingle = isSingleDate(edu.startDate, edu.endDate, edu.current);
+                  return (
+                    <div key={edu.id} className="page-break-avoid flex flex-col gap-1 relative pl-4 border-l-2" style={{ borderColor: `${accent}15` }}>
+                      <div className="absolute -left-1.5 top-1.5 w-2.5 h-2.5 rounded-full bg-amber-500" />
+                      
+                      <div className="flex justify-between items-baseline flex-wrap gap-x-2">
+                        <h3 className="text-base font-bold text-slate-950">{edu.degree}</h3>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {edu.cgpa && (
+                            <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                              CGPA: {edu.cgpa}
+                            </span>
+                          )}
+                          {dateStr && (
+                            <span className={`text-xs font-semibold text-slate-500 ${isSingle ? 'text-center min-w-[70px] inline-block' : ''}`}>
+                              {dateStr}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="text-xs font-bold text-slate-500 flex items-center gap-1.5 flex-wrap">
+                        <span>{edu.school}</span>
+                        {edu.location && (
+                          <>
+                            <span>•</span>
+                            <span>{edu.location}</span>
+                          </>
+                        )}
+                      </div>
+                      
+                      {edu.description && (
+                        <p className="text-slate-600 text-xs whitespace-pre-wrap mt-1.5">
+                          {edu.description}
+                        </p>
                       )}
                     </div>
-                    
-                    {edu.description && (
-                      <p className="text-slate-600 text-xs leading-relaxed whitespace-pre-wrap mt-1.5">
-                        {edu.description}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1567,13 +1751,13 @@ export function ElegantTemplate({ data }: CVTemplateProps) {
 export function AcademicTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, leadership, achievements, references, customSections, metadata } = data;
   const accent = metadata.accentColor || '#0284c7';
-  const fontScale = getFontScaleNumber(metadata.fontSize);
+  const { fontScale, scaleRatio, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
   const sectionOrder = getEffectiveSectionOrder(data);
   const hiddenSections = data.hiddenSections || [];
 
   // Helper for Section Heading with Accent Title & Solid Line on Right
   const SectionHeader = ({ title }: { title: string }) => (
-    <div className="flex items-center gap-3 mt-3 mb-2 page-break-avoid">
+    <div className="flex items-center gap-3 mt-2 mb-1.5 page-break-avoid">
       <h2 className="text-base font-bold shrink-0 tracking-tight" style={{ color: accent }}>
         {title}
       </h2>
@@ -1583,8 +1767,13 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
 
   return (
     <div 
-      className="font-sans text-slate-900 bg-white min-h-[297mm] p-8 md:p-10 flex flex-col gap-2.5" 
-      style={{ zoom: fontScale / 100, fontSize: `${fontScale}%` }}
+      className="font-sans text-slate-900 bg-white min-h-[297mm] flex flex-col" 
+      style={{ 
+        fontSize: `${fontScale}%`, 
+        lineHeight,
+        padding,
+        gap
+      }}
     >
       {/* Centered Header with Top-Right Photo */}
       <div className="relative pb-2">
@@ -1626,7 +1815,7 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
           return (
             <div key="summary">
               <SectionHeader title="Professional Statement" />
-              <p className="text-xs md:text-[0.825rem] text-slate-800 leading-relaxed text-justify whitespace-pre-wrap">
+              <p className="text-xs md:text-[0.825rem] text-slate-800 text-justify whitespace-pre-wrap">
                 {personalInfo.summary}
               </p>
             </div>
@@ -1636,36 +1825,49 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
         if (secId === 'education' && education && education.length > 0) {
           return (
             <div key="education">
-              <SectionHeader title="Education" />
+              <SectionHeader title={getSectionDisplayTitle('education', data)} />
               <div className="flex flex-col gap-2">
-                {education.map((edu) => (
-                  <div key={edu.id} className="flex flex-col gap-0.5 page-break-avoid">
-                    <div className="flex justify-between items-baseline text-xs md:text-[0.825rem] gap-2">
-                      <div className="font-medium text-slate-900 flex-1">
-                        <span className="font-bold">{edu.school}</span>
-                        {edu.degree && <span>, {edu.degree}</span>}
+                {education.map((edu) => {
+                  const dateStr = formatDateRange(edu.startDate, edu.endDate, edu.current, '-');
+                  const isSingle = isSingleDate(edu.startDate, edu.endDate, edu.current);
+                  const hasSchool = Boolean(edu.school);
+                  const hasDegree = Boolean(edu.degree);
+                  if (!hasSchool && !hasDegree && !edu.cgpa && !dateStr && !edu.location && !edu.description) return null;
+
+                  return (
+                    <div key={edu.id} className="flex flex-col gap-0.5 page-break-avoid">
+                      <div className="flex justify-between items-baseline text-xs md:text-[0.825rem] gap-2">
+                        <div className="font-medium text-slate-900 flex-1 flex items-baseline gap-1.5 flex-wrap">
+                          {hasSchool && <span className="font-bold">{edu.school}</span>}
+                          {hasSchool && hasDegree && <span>, </span>}
+                          {hasDegree && <span>{edu.degree}</span>}
+                        </div>
+                        <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
+                          {edu.cgpa && (
+                            <span className="font-semibold text-slate-800 text-[11px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                              CGPA: {edu.cgpa}
+                            </span>
+                          )}
+                          {dateStr && (
+                            <div className={`text-slate-700 font-medium shrink-0 whitespace-nowrap ${isSingle ? 'text-center min-w-[70px] inline-block' : ''}`}>
+                              {dateStr}
+                            </div>
+                          )}
+                          {edu.location && (
+                            <div className="text-right font-semibold shrink-0 min-w-[70px]" style={{ color: accent }}>
+                              {edu.location}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
-                        {edu.cgpa && (
-                          <span className="font-semibold text-slate-800 text-[11px]">
-                            {edu.cgpa}
-                          </span>
-                        )}
-                        <span className="text-slate-700 font-medium">
-                          {formatDate(edu.startDate)} {edu.startDate && edu.endDate ? '-' : ''} {formatDate(edu.endDate, edu.current)}
-                        </span>
-                      </div>
-                      <div className="text-right font-semibold shrink-0 min-w-[70px]" style={{ color: accent }}>
-                        {edu.location || ''}
-                      </div>
+                      {edu.description && (
+                        <p className="text-[11px] text-slate-600 pl-1 mt-0.5">
+                          {edu.description}
+                        </p>
+                      )}
                     </div>
-                    {edu.description && (
-                      <p className="text-[11px] text-slate-600 pl-1 mt-0.5">
-                        {edu.description}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -1674,31 +1876,46 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
         if (secId === 'workExperience' && workExperience && workExperience.length > 0) {
           return (
             <div key="workExperience">
-              <SectionHeader title="Professional Experience" />
+              <SectionHeader title={getSectionDisplayTitle('workExperience', data)} />
               <div className="flex flex-col gap-3">
-                {workExperience.map((exp) => (
-                  <div key={exp.id} className="page-break-avoid">
-                    <div className="flex justify-between items-baseline flex-wrap gap-1">
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-xs md:text-sm">{exp.company}</h3>
-                        <p className="font-semibold text-slate-700 text-xs">{exp.position}</p>
-                      </div>
-                      <div className="text-right text-xs font-medium" style={{ color: accent }}>
-                        <div>{exp.location}</div>
-                        <div>{formatDate(exp.startDate)} - {formatDate(exp.endDate, exp.current)}</div>
-                      </div>
+                {workExperience.map((exp) => {
+                  const dateStr = formatDateRange(exp.startDate, exp.endDate, exp.current, '-');
+                  const hasCompany = Boolean(exp.company);
+                  const hasPosition = Boolean(exp.position);
+                  const hasHeader = hasCompany || hasPosition;
+                  const hasRight = Boolean(exp.location) || Boolean(dateStr);
+                  if (!hasHeader && !hasRight && !exp.description) return null;
+
+                  return (
+                    <div key={exp.id} className="page-break-avoid">
+                      {(hasHeader || hasRight) && (
+                        <div className="flex justify-between items-baseline flex-wrap gap-1">
+                          {hasHeader && (
+                            <div>
+                              {hasCompany && <h3 className="font-bold text-slate-900 text-xs md:text-sm">{exp.company}</h3>}
+                              {hasPosition && <p className="font-semibold text-slate-700 text-xs">{exp.position}</p>}
+                            </div>
+                          )}
+                          {hasRight && (
+                            <div className="text-right text-xs font-medium" style={{ color: accent }}>
+                              {exp.location && <div>{exp.location}</div>}
+                              {dateStr && <div>{dateStr}</div>}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {exp.description && (
+                        <ul className="list-disc pl-5 text-xs text-slate-800 space-y-0.5 mt-0.5">
+                          {exp.description.split('\n').map((line, i) => {
+                            const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
+                            if (!cleanLine) return null;
+                            return <li key={i}>{cleanLine}</li>;
+                          })}
+                        </ul>
+                      )}
                     </div>
-                    {exp.description && (
-                      <ul className="list-disc pl-5 text-xs text-slate-800 space-y-1 mt-1 leading-relaxed">
-                        {exp.description.split('\n').map((line, i) => {
-                          const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
-                          if (!cleanLine) return null;
-                          return <li key={i}>{cleanLine}</li>;
-                        })}
-                      </ul>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -1707,31 +1924,46 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
         if (secId === 'leadership' && leadership && leadership.length > 0) {
           return (
             <div key="leadership">
-              <SectionHeader title="Leadership and Volunteering Experience" />
+              <SectionHeader title={getSectionDisplayTitle('leadership', data)} />
               <div className="flex flex-col gap-3">
-                {leadership.map((lead) => (
-                  <div key={lead.id} className="page-break-avoid">
-                    <div className="flex justify-between items-baseline flex-wrap gap-1">
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-xs md:text-sm">{lead.company}</h3>
-                        <p className="font-semibold text-slate-700 text-xs">{lead.position}</p>
-                      </div>
-                      <div className="text-right text-xs font-medium" style={{ color: accent }}>
-                        <div>{lead.location}</div>
-                        <div>{formatDate(lead.startDate)} - {formatDate(lead.endDate, lead.current)}</div>
-                      </div>
+                {leadership.map((lead) => {
+                  const dateStr = formatDateRange(lead.startDate, lead.endDate, lead.current, '-');
+                  const hasCompany = Boolean(lead.company);
+                  const hasPosition = Boolean(lead.position);
+                  const hasHeader = hasCompany || hasPosition;
+                  const hasRight = Boolean(lead.location) || Boolean(dateStr);
+                  if (!hasHeader && !hasRight && !lead.description) return null;
+
+                  return (
+                    <div key={lead.id} className="page-break-avoid">
+                      {(hasHeader || hasRight) && (
+                        <div className="flex justify-between items-baseline flex-wrap gap-1">
+                          {hasHeader && (
+                            <div>
+                              {hasCompany && <h3 className="font-bold text-slate-900 text-xs md:text-sm">{lead.company}</h3>}
+                              {hasPosition && <p className="font-semibold text-slate-700 text-xs">{lead.position}</p>}
+                            </div>
+                          )}
+                          {hasRight && (
+                            <div className="text-right text-xs font-medium" style={{ color: accent }}>
+                              {lead.location && <div>{lead.location}</div>}
+                              {dateStr && <div>{dateStr}</div>}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {lead.description && (
+                        <ul className="list-disc pl-5 text-xs text-slate-800 space-y-0.5 mt-0.5">
+                          {lead.description.split('\n').map((line, i) => {
+                            const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
+                            if (!cleanLine) return null;
+                            return <li key={i}>{cleanLine}</li>;
+                          })}
+                        </ul>
+                      )}
                     </div>
-                    {lead.description && (
-                      <ul className="list-disc pl-5 text-xs text-slate-800 space-y-1 mt-1 leading-relaxed">
-                        {lead.description.split('\n').map((line, i) => {
-                          const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
-                          if (!cleanLine) return null;
-                          return <li key={i}>{cleanLine}</li>;
-                        })}
-                      </ul>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -1740,13 +1972,13 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
         if (secId === 'achievements' && achievements && achievements.length > 0) {
           return (
             <div key="achievements">
-              <SectionHeader title="Achievements" />
-              <div className="flex flex-col gap-2 text-xs text-slate-800 leading-relaxed">
+              <SectionHeader title={getSectionDisplayTitle('achievements', data)} />
+              <div className="flex flex-col gap-1 text-xs text-slate-800">
                 {achievements.map((ach) => (
                   <div key={ach.id} className="page-break-avoid">
                     <p>
-                      <span className="font-semibold text-slate-900">{ach.title}</span>
-                      {ach.description ? `: ${ach.description}` : ''}
+                      {ach.title && <span className="font-semibold text-slate-900">{ach.title}</span>}
+                      {ach.title && ach.description ? `: ${ach.description}` : ach.description || ''}
                     </p>
                   </div>
                 ))}
@@ -1758,7 +1990,7 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
         if (secId === 'skills' && skills && skills.length > 0) {
           return (
             <div key="skills">
-              <SectionHeader title="Skills" />
+              <SectionHeader title={getSectionDisplayTitle('skills', data)} />
               <div className="text-xs text-slate-800 flex items-baseline gap-4 page-break-avoid">
                 <span className="font-bold text-slate-900 shrink-0">General Skills</span>
                 <span>{skills.join(', ')}</span>
@@ -1770,7 +2002,7 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
         if (secId === 'languages' && data.languages && data.languages.length > 0) {
           return (
             <div key="languages">
-              <SectionHeader title="Languages" />
+              <SectionHeader title={getSectionDisplayTitle('languages', data)} />
               <div className="text-xs text-slate-800 flex items-baseline gap-4 page-break-avoid">
                 <span className="font-bold text-slate-900 shrink-0">Languages Known</span>
                 <span>{data.languages.map(l => `${l.name} (${l.level})`).join(', ')}</span>
@@ -1782,16 +2014,21 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
         if (secId === 'references' && references && references.length > 0) {
           return (
             <div key="references">
-              <SectionHeader title="Reference" />
+              <SectionHeader title={getSectionDisplayTitle('references', data)} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-800">
-                {references.map((ref) => (
-                  <div key={ref.id} className="page-break-avoid flex flex-col gap-0.5">
-                    <p className="font-bold text-slate-900">{ref.name}</p>
-                    <p className="text-slate-700">{ref.title}{ref.organization ? `, ${ref.organization}` : ''}</p>
-                    {ref.phone && <p className="text-slate-700">Mobile: {ref.phone}</p>}
-                    {ref.email && <p className="text-slate-700">Email: {ref.email}</p>}
-                  </div>
-                ))}
+                {references.map((ref) => {
+                  const titleAndOrg = ref.title && ref.organization
+                    ? `${ref.title}, ${ref.organization}`
+                    : ref.title || ref.organization || '';
+                  return (
+                    <div key={ref.id} className="page-break-avoid flex flex-col gap-0.5">
+                      {ref.name && <p className="font-bold text-slate-900">{ref.name}</p>}
+                      {titleAndOrg && <p className="text-slate-700">{titleAndOrg}</p>}
+                      {ref.phone && <p className="text-slate-700">Mobile: {ref.phone}</p>}
+                      {ref.email && <p className="text-slate-700">Email: {ref.email}</p>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -1805,26 +2042,37 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
             <div key={secId}>
               <SectionHeader title={custom.title} />
               <div className="flex flex-col gap-3">
-                {custom.items.map((item) => (
-                  <div key={item.id} className="page-break-avoid">
-                    <div className="flex justify-between items-baseline flex-wrap gap-1">
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-xs md:text-sm">{item.title}</h3>
-                        {item.subtitle && <p className="font-semibold text-slate-700 text-xs">{item.subtitle}</p>}
-                      </div>
-                      {item.date && (
-                        <div className="text-right text-xs font-medium" style={{ color: accent }}>
-                          {item.date}
+                {custom.items.map((item) => {
+                  const hasTitle = Boolean(item.title);
+                  const hasSubtitle = Boolean(item.subtitle);
+                  const hasHeader = hasTitle || hasSubtitle;
+                  if (!hasHeader && !item.date && !item.description) return null;
+
+                  return (
+                    <div key={item.id} className="page-break-avoid">
+                      {(hasHeader || item.date) && (
+                        <div className="flex justify-between items-baseline flex-wrap gap-1">
+                          {hasHeader && (
+                            <div>
+                              {hasTitle && <h3 className="font-bold text-slate-900 text-xs md:text-sm">{item.title}</h3>}
+                              {hasSubtitle && <p className="font-semibold text-slate-700 text-xs">{item.subtitle}</p>}
+                            </div>
+                          )}
+                          {item.date && (
+                            <div className="text-right text-xs font-medium" style={{ color: accent }}>
+                              {item.date}
+                            </div>
+                          )}
                         </div>
                       )}
+                      {item.description && (
+                        <p className="text-xs text-slate-800 mt-0.5 whitespace-pre-wrap">
+                          {item.description}
+                        </p>
+                      )}
                     </div>
-                    {item.description && (
-                      <p className="text-xs text-slate-800 mt-1 leading-relaxed whitespace-pre-wrap">
-                        {item.description}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

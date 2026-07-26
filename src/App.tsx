@@ -670,7 +670,7 @@ export default function App() {
             {/* Standard A4 Aspect Ratio Canvas */}
             <div 
               id="cv-preview-sheet" 
-              className="cv-preview-container bg-white rounded-md overflow-hidden print:shadow-none shadow-2xl shrink-0 mx-auto"
+              className="cv-preview-container bg-white rounded-md overflow-hidden print:shadow-none shadow-2xl shrink-0 mx-auto relative"
               style={{
                 width: '210mm',
                 minHeight: '297mm',
@@ -678,6 +678,13 @@ export default function App() {
               }}
             >
               <CVTemplate data={cvData} />
+
+              {/* Visual A4 Page 1 Boundary Marker */}
+              <div className="absolute top-[297mm] left-0 right-0 border-b-2 border-dashed border-rose-400 opacity-75 pointer-events-none print:hidden flex items-center justify-end pr-4 z-50">
+                <span className="bg-rose-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-b shadow-sm uppercase tracking-wider">
+                  A4 Page 1 Boundary (297mm)
+                </span>
+              </div>
             </div>
 
           </div>

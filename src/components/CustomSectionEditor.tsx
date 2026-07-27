@@ -1,6 +1,7 @@
 import React from 'react';
 import { CVData, CustomSection, CustomSectionItem } from '../types';
 import { Plus, Trash2, Edit3 } from 'lucide-react';
+import { TextFormattingToolbar } from './EditorPanel';
 
 interface CustomSectionEditorProps {
   section: CustomSection;
@@ -166,9 +167,13 @@ export default function CustomSectionEditor({
 
             {/* Description */}
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-slate-600">
-                বিস্তারিত বর্ণনা (Description & Key Highlights)
-              </label>
+              <TextFormattingToolbar
+                label="বিস্তারিত বর্ণনা (Description & Key Highlights)"
+                value={item.description || ''}
+                onChangeValue={(val) => handleUpdateItem(item.id, 'description', val)}
+                textAlign={data.metadata.textAlign || 'justify'}
+                onChangeTextAlign={(align) => onUpdate({ ...data, metadata: { ...data.metadata, textAlign: align } })}
+              />
               <textarea
                 rows={2}
                 value={item.description || ''}

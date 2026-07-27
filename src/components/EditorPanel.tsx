@@ -6,7 +6,7 @@ import {
   Plus, Trash2, ChevronDown, ChevronUp, Upload, 
   RefreshCw, Sparkles, AlertCircle, Users,
   Crop, Edit2, ArrowUp, ArrowDown, Eye, EyeOff, Check, FileText, X,
-  Award, BookOpen, Layers, FolderPlus, RotateCcw
+  Award, BookOpen, Layers, FolderPlus, RotateCcw, AlignJustify
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import PhotoCropModal from './PhotoCropModal';
@@ -17,6 +17,82 @@ import {
   STANDARD_SECTION_LABELS, 
   CUSTOM_SECTION_PRESETS 
 } from '../lib/sectionUtils';
+
+interface TextFormattingToolbarProps {
+  label: string;
+  hint?: string;
+  value: string;
+  onChangeValue: (val: string) => void;
+  textAlign?: 'justify' | 'left' | 'center';
+  onChangeTextAlign?: (align: 'justify' | 'left' | 'center') => void;
+  showBulletButton?: boolean;
+}
+
+export function TextFormattingToolbar({
+  label,
+  hint,
+  value,
+  onChangeValue,
+  textAlign = 'justify',
+  onChangeTextAlign,
+  showBulletButton = true
+}: TextFormattingToolbarProps) {
+  const handleInsertBullet = () => {
+    if (!value) {
+      onChangeValue('• ');
+      return;
+    }
+    if (value.endsWith('\n')) {
+      onChangeValue(value + '• ');
+    } else {
+      onChangeValue(value + '\n• ');
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
+      <div>
+        <label className="block text-xs font-bold text-slate-700">
+          {label}
+        </label>
+        {hint && <span className="block text-[10px] text-slate-400 font-normal">{hint}</span>}
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        {showBulletButton && (
+          <button
+            type="button"
+            onClick={handleInsertBullet}
+            className="text-[10px] font-bold text-slate-700 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 rounded-md px-2 py-0.5 transition-colors cursor-pointer flex items-center gap-1"
+            title="নতুন বুলেট পয়েন্ট (•) যোগ করুন"
+          >
+            <span className="font-mono text-indigo-600 font-extrabold">•</span>
+            <span>বুলেট যোগ করুন</span>
+          </button>
+        )}
+
+        {onChangeTextAlign && (
+          <button
+            type="button"
+            onClick={() => {
+              const nextAlign = textAlign === 'justify' ? 'left' : 'justify';
+              onChangeTextAlign(nextAlign);
+            }}
+            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border transition-colors cursor-pointer flex items-center gap-1 ${
+              textAlign === 'justify'
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+            }`}
+            title="সিভিতে উভয় দিকে মার্জিন সোজা রাখতে (Justify) টগল করুন"
+          >
+            <AlignJustify className="w-3 h-3" />
+            <span>{textAlign === 'justify' ? 'Justify: ON' : 'Justify: OFF'}</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface EditorPanelProps {
   data: CVData;
@@ -824,9 +900,14 @@ export default function EditorPanel({ data, onUpdate, onClear, onRestore }: Edit
                       className="overflow-hidden"
                     >
                       <div className="p-4 border-t border-slate-100 space-y-3">
-                        <label className="block text-xs font-semibold text-slate-600">
-                          Professional Summary (সারসংক্ষেপ ও পরিচিতি)
-                        </label>
+                        <TextFormattingToolbar
+                          label="Professional Summary (সারসংক্ষেপ ও পরিচিতি)"
+                          hint="ডানে ও বামে মার্জিন সোজা রাখতে Justify টগল অন রাখুন"
+                          value={data.personalInfo.summary || ''}
+                          onChangeValue={(val) => updatePersonalInfo('summary', val)}
+                          textAlign={data.metadata.textAlign || 'justify'}
+                          onChangeTextAlign={(align) => onUpdate({ ...data, metadata: { ...data.metadata, textAlign: align } })}
+                        />
                         <textarea 
                           value={data.personalInfo.summary || ''}
                           onChange={(e) => updatePersonalInfo('summary', e.target.value)}
@@ -970,10 +1051,14 @@ export default function EditorPanel({ data, onUpdate, onClear, onRestore }: Edit
                                 </div>
 
                                 <div className="sm:col-span-2">
-                                  <div className="flex justify-between items-center mb-0.5">
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Duties & Achievements</label>
-                                    <span className="text-[10px] text-slate-400">Use bullet points (•) for clean styling</span>
-                                  </div>
+                                  <TextFormattingToolbar
+                                    label="Duties & Achievements (কাজের বিবরণ ও দায়িত্ব)"
+                                    hint="বুলেট যোগ করতে [বুলেট যোগ করুন] চাপুন"
+                                    value={exp.description}
+                                    onChangeValue={(val) => updateWorkExperience(exp.id, 'description', val)}
+                                    textAlign={data.metadata.textAlign || 'justify'}
+                                    onChangeTextAlign={(align) => onUpdate({ ...data, metadata: { ...data.metadata, textAlign: align } })}
+                                  />
                                   <textarea 
                                     rows={3}
                                     value={exp.description}
@@ -1150,7 +1235,13 @@ export default function EditorPanel({ data, onUpdate, onClear, onRestore }: Edit
                                 </div>
 
                                 <div className="sm:col-span-2">
-                                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Honors / Key Courses</label>
+                                  <TextFormattingToolbar
+                                    label="Honors / Key Courses / Highlights (শিক্ষা অর্জনের বিস্তারিত)"
+                                    value={edu.description || ''}
+                                    onChangeValue={(val) => updateEducation(edu.id, 'description', val)}
+                                    textAlign={data.metadata.textAlign || 'justify'}
+                                    onChangeTextAlign={(align) => onUpdate({ ...data, metadata: { ...data.metadata, textAlign: align } })}
+                                  />
                                   <textarea 
                                     rows={2}
                                     value={edu.description || ''}

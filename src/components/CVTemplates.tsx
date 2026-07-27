@@ -45,48 +45,83 @@ export function isSingleDate(startDate?: string, endDate?: string, isCurrent: bo
   return (Boolean(start) && !Boolean(end)) || (!Boolean(start) && Boolean(end));
 }
 
-// Helper to compute font scale number (e.g. 100, 98, 95)
+// Helper to compute font scale number (e.g. 100, 90, 80)
 export function getFontScaleNumber(fontSizeSetting: string | number | undefined): number {
   if (typeof fontSizeSetting === 'number') return fontSizeSetting;
   if (!fontSizeSetting) return 100;
-  if (fontSizeSetting === 'sm') return 92;
+  if (fontSizeSetting === 'sm') return 90;
   if (fontSizeSetting === 'base') return 100;
-  if (fontSizeSetting === 'lg') return 108;
+  if (fontSizeSetting === 'lg') return 110;
   const parsed = parseInt(fontSizeSetting.toString().replace('%', ''), 10);
   return isNaN(parsed) ? 100 : parsed;
 }
 
-// Helper to compute font scale number and associated tight line heights / spacings
-export function getScaledStyles(fontScaleSetting: string | number | undefined) {
+// Helper to compute line spacing scale number (e.g. 100, 80, 50)
+export function getLineSpacingNumber(lineSpacingSetting: string | number | undefined): number {
+  if (typeof lineSpacingSetting === 'number') return lineSpacingSetting;
+  if (!lineSpacingSetting) return 100;
+  const parsed = parseInt(lineSpacingSetting.toString().replace('%', ''), 10);
+  return isNaN(parsed) ? 100 : parsed;
+}
+
+// Helper to compute page margin scale number (e.g. 100, 80, 50)
+export function getPageMarginNumber(pageMarginSetting: string | number | undefined): number {
+  if (typeof pageMarginSetting === 'number') return pageMarginSetting;
+  if (!pageMarginSetting) return 100;
+  const parsed = parseInt(pageMarginSetting.toString().replace('%', ''), 10);
+  return isNaN(parsed) ? 100 : parsed;
+}
+
+// Helper to compute font scale, line height, page margins, and section gaps independently
+export function getScaledStyles(
+  fontScaleSetting: string | number | undefined,
+  lineSpacingSetting?: string | number | undefined,
+  pageMarginSetting?: string | number | undefined
+) {
   const fontScale = getFontScaleNumber(fontScaleSetting);
-  const scaleRatio = fontScale / 100;
-  
-  const isScaledDown = scaleRatio < 1;
+  const lineSpacingScale = getLineSpacingNumber(lineSpacingSetting);
+  const pageMarginScale = getPageMarginNumber(pageMarginSetting);
 
-  // Responsive line height formula (line spacing / line gap):
-  // At 100%: 1.18
-  // At 90%:  1.08
-  // At 80%:  1.00
-  // At 70%:  0.90
-  // At 50%:  0.70
-  const lineHeight = isScaledDown
-    ? Math.max(0.70, 1.18 * scaleRatio)
-    : Math.max(1.10, 1.18 * scaleRatio);
+  const fontRatio = fontScale / 100;
+  const lineGapRatio = lineSpacingScale / 100;
+  const marginRatio = pageMarginScale / 100;
 
-  // Keep standard page margins (top, bottom, left, right padding) comfortable
-  const padding = `${Math.max(1.2, 2.25 * scaleRatio).toFixed(2)}rem`;
+  // Responsive line height formula (directly controls text line gaps):
+  // At 100% line spacing: 1.18
+  // At 80% line spacing: 0.94
+  // At 50% line spacing: 0.59
+  // At 40% line spacing: 0.47
+  const lineHeight = Math.max(0.40, +(1.18 * lineGapRatio).toFixed(2));
 
-  // Gap between main sections in rem:
-  const gap = `${Math.max(0.35, 1.25 * scaleRatio).toFixed(2)}rem`;
+  // Outer Page Margins (Padding around A4 page border) - Strictly independent of font size!
+  // At 100% page margin: 2.0rem
+  // At 50% page margin: 1.0rem
+  // At 30% page margin: 0.6rem
+  const padding = `${Math.max(0.25, +(2.0 * marginRatio).toFixed(2))}rem`;
 
-  return { fontScale, scaleRatio, lineHeight, padding, gap };
+  // Gap between main sections in rem
+  // At 100% line spacing: 1.0rem
+  // At 50% line spacing: 0.35rem
+  const gap = `${Math.max(0.10, +(1.0 * lineGapRatio).toFixed(2))}rem`;
+
+  return { 
+    fontScale, 
+    lineSpacingScale, 
+    pageMarginScale, 
+    fontRatio, 
+    lineGapRatio, 
+    marginRatio, 
+    lineHeight, 
+    padding, 
+    gap 
+  };
 }
 
 // --- 1. CLASSIC TEMPLATE: EUROPASS STANDARD ---
 export function ClassicTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, leadership, achievements, references, customSections, metadata } = data;
   const accent = metadata.accentColor || '#1e3a8a';
-  const { fontScale, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
+  const { fontScale, fontRatio, lineGapRatio, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize, metadata.lineSpacing, metadata.pageMargin);
   const sectionOrder = getEffectiveSectionOrder(data);
   const hiddenSections = data.hiddenSections || [];
 
@@ -97,8 +132,10 @@ export function ClassicTemplate({ data }: CVTemplateProps) {
         fontSize: `${fontScale}%`, 
         lineHeight,
         padding,
-        gap
-      }}
+        gap,
+        '--cv-font-scale': fontRatio,
+        '--cv-line-spacing-ratio': lineGapRatio,
+      } as React.CSSProperties}
     >
       
       {/* Header Grid: Europass standard layout */}
@@ -426,19 +463,21 @@ export function ClassicTemplate({ data }: CVTemplateProps) {
 export function ModernTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#374151';
-  const { fontScale, lineHeight } = getScaledStyles(metadata.fontSize);
+  const { fontScale, fontRatio, lineGapRatio, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize, metadata.lineSpacing, metadata.pageMargin);
 
   return (
     <div 
       className="font-sans text-zinc-800 bg-white min-h-[297mm] grid grid-cols-12" 
       style={{ 
         fontSize: `${fontScale}%`, 
-        lineHeight 
-      }}
+        lineHeight,
+        '--cv-font-scale': fontRatio,
+        '--cv-line-spacing-ratio': lineGapRatio,
+      } as React.CSSProperties}
     >
       
       {/* Sidebar: Left Column (4/12) */}
-      <div className="col-span-4 bg-zinc-50 border-r border-zinc-200 p-6 flex flex-col gap-6 h-full">
+      <div className="col-span-4 bg-zinc-50 border-r border-zinc-200 flex flex-col h-full" style={{ padding, gap }}>
         {/* Photo */}
         {personalInfo.photo ? (
           <div className="flex justify-center mb-1">
@@ -552,7 +591,7 @@ export function ModernTemplate({ data }: CVTemplateProps) {
       </div>
 
       {/* Main Body: Right Column (8/12) */}
-      <div className="col-span-8 p-10 flex flex-col gap-8 h-full">
+      <div className="col-span-8 flex flex-col h-full" style={{ padding, gap }}>
         {/* Name and Job Title */}
         <div>
           <h1 className="text-4xl font-extrabold text-zinc-900 tracking-tight leading-none mb-2 uppercase">
@@ -659,7 +698,7 @@ export function ModernTemplate({ data }: CVTemplateProps) {
 export function CreativeTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#581c87';
-  const { fontScale, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
+  const { fontScale, fontRatio, lineGapRatio, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize, metadata.lineSpacing, metadata.pageMargin);
 
   return (
     <div 
@@ -668,8 +707,10 @@ export function CreativeTemplate({ data }: CVTemplateProps) {
         fontSize: `${fontScale}%`, 
         lineHeight,
         padding,
-        gap
-      }}
+        gap,
+        '--cv-font-scale': fontRatio,
+        '--cv-line-spacing-ratio': lineGapRatio,
+      } as React.CSSProperties}
     >
       
       {/* Header Panel - Elegantly Centered */}
@@ -890,7 +931,7 @@ export function CreativeTemplate({ data }: CVTemplateProps) {
 export function EditorialTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#1e3a8a';
-  const { fontScale, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
+  const { fontScale, fontRatio, lineGapRatio, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize, metadata.lineSpacing, metadata.pageMargin);
 
   return (
     <div 
@@ -899,8 +940,10 @@ export function EditorialTemplate({ data }: CVTemplateProps) {
         fontSize: `${fontScale}%`, 
         lineHeight,
         padding,
-        gap
-      }}
+        gap,
+        '--cv-font-scale': fontRatio,
+        '--cv-line-spacing-ratio': lineGapRatio,
+      } as React.CSSProperties}
     >
       {/* Centered Name and Contact Info */}
       <div className="flex flex-col items-center text-center">
@@ -1071,7 +1114,7 @@ export function EditorialTemplate({ data }: CVTemplateProps) {
 export function TechTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#0ea5e9';
-  const { fontScale, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
+  const { fontScale, fontRatio, lineGapRatio, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize, metadata.lineSpacing, metadata.pageMargin);
 
   return (
     <div 
@@ -1080,8 +1123,10 @@ export function TechTemplate({ data }: CVTemplateProps) {
         fontSize: `${fontScale}%`, 
         lineHeight,
         padding,
-        gap
-      }}
+        gap,
+        '--cv-font-scale': fontRatio,
+        '--cv-line-spacing-ratio': lineGapRatio,
+      } as React.CSSProperties}
     >
       
       {/* Tech-Branded Header Block */}
@@ -1289,21 +1334,25 @@ function adjustColorBrightness(hex: string, percent: number): string {
 export function VibrantTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#3b82f6';
-  const { fontScale, lineHeight } = getScaledStyles(metadata.fontSize);
+  const { fontScale, fontRatio, lineGapRatio, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize, metadata.lineSpacing, metadata.pageMargin);
 
   return (
     <div 
       className="font-sans text-slate-800 bg-white min-h-[297mm] flex flex-row" 
       style={{ 
         fontSize: `${fontScale}%`, 
-        lineHeight 
-      }}
+        lineHeight,
+        '--cv-font-scale': fontRatio,
+        '--cv-line-spacing-ratio': lineGapRatio,
+      } as React.CSSProperties}
     >
       
       {/* Left Sidebar (35% width) - Colorful Gradient */}
-      <div className="w-[35%] text-white p-8 flex flex-col gap-6 shrink-0 relative overflow-hidden" 
+      <div className="w-[35%] text-white flex flex-col shrink-0 relative overflow-hidden" 
            style={{ 
              background: `linear-gradient(135deg, ${accent}, ${adjustColorBrightness(accent, -40)})`,
+             padding,
+             gap
            }}>
         
         {/* Soft decorative background circles for modern premium look */}
@@ -1406,7 +1455,7 @@ export function VibrantTemplate({ data }: CVTemplateProps) {
       </div>
 
       {/* Right Content Area (65% width) - Sleek Modern White */}
-      <div className="w-[65%] p-10 flex flex-col gap-6">
+      <div className="w-[65%] flex flex-col" style={{ padding, gap }}>
         {/* Profile Summary */}
         {personalInfo.summary && (
           <div className="flex flex-col gap-2">
@@ -1510,7 +1559,7 @@ export function VibrantTemplate({ data }: CVTemplateProps) {
 export function ElegantTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, languages, metadata } = data;
   const accent = metadata.accentColor || '#1e3a8a';
-  const { fontScale, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
+  const { fontScale, fontRatio, lineGapRatio, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize, metadata.lineSpacing, metadata.pageMargin);
 
   return (
     <div 
@@ -1519,8 +1568,10 @@ export function ElegantTemplate({ data }: CVTemplateProps) {
         fontSize: `${fontScale}%`, 
         lineHeight,
         padding,
-        gap
-      }}
+        gap,
+        '--cv-font-scale': fontRatio,
+        '--cv-line-spacing-ratio': lineGapRatio,
+      } as React.CSSProperties}
     >
       
       {/* Outer border decoration for an elite executive feel */}
@@ -1751,7 +1802,7 @@ export function ElegantTemplate({ data }: CVTemplateProps) {
 export function AcademicTemplate({ data }: CVTemplateProps) {
   const { personalInfo, workExperience, education, skills, leadership, achievements, references, customSections, metadata } = data;
   const accent = metadata.accentColor || '#0284c7';
-  const { fontScale, scaleRatio, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize);
+  const { fontScale, fontRatio, lineGapRatio, lineHeight, padding, gap } = getScaledStyles(metadata.fontSize, metadata.lineSpacing, metadata.pageMargin);
   const sectionOrder = getEffectiveSectionOrder(data);
   const hiddenSections = data.hiddenSections || [];
 
@@ -1772,8 +1823,10 @@ export function AcademicTemplate({ data }: CVTemplateProps) {
         fontSize: `${fontScale}%`, 
         lineHeight,
         padding,
-        gap
-      }}
+        gap,
+        '--cv-font-scale': fontRatio,
+        '--cv-line-spacing-ratio': lineGapRatio,
+      } as React.CSSProperties}
     >
       {/* Centered Header with Top-Right Photo */}
       <div className="relative pb-2">

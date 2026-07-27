@@ -13,6 +13,125 @@
 }
 
 /* 
+  Custom CSS variables for Font Scale (%) and Line Spacing (Text line gaps)
+*/
+#cv-preview-sheet {
+  --cv-font-scale: 1;
+  --cv-line-spacing-ratio: 1;
+  --cv-text-align: justify;
+}
+
+/*
+  TEXT ALIGNMENT (JUSTIFY / LEFT / CENTER)
+  Applies justified text alignment to paragraphs, descriptions, summaries, and bullet points
+  so that both left and right edges align cleanly for a professional document presentation.
+*/
+#cv-preview-sheet p,
+#cv-preview-sheet li,
+#cv-preview-sheet ul,
+#cv-preview-sheet ol,
+#cv-preview-sheet div.whitespace-pre-wrap,
+#cv-preview-sheet .whitespace-pre-wrap,
+#cv-preview-sheet .cv-body-text,
+#cv-preview-sheet .cv-summary-text,
+#cv-preview-sheet .cv-description-text,
+#cv-preview-sheet .prose {
+  text-align: var(--cv-text-align, justify) !important;
+  text-justify: inter-word;
+}
+
+/* 
+  1. REAL-TIME FONT SIZE SCALING
+  Tailwind utility classes set font-size in rem units (relative to html 16px).
+  By scaling all text class sizes with calc(... * var(--cv-font-scale)), changing Font Size (%)
+  in the editor bar now smoothly increases or decreases all text in the CV in real-time.
+*/
+#cv-preview-sheet .text-\[8px\]  { font-size: calc(8px * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-\[9px\]  { font-size: calc(9px * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-\[10px\] { font-size: calc(10px * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-\[11px\] { font-size: calc(11px * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-xs       { font-size: calc(0.75rem * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-sm       { font-size: calc(0.875rem * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-base     { font-size: calc(1rem * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-lg       { font-size: calc(1.125rem * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-xl       { font-size: calc(1.25rem * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-2xl      { font-size: calc(1.5rem * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-3xl      { font-size: calc(1.875rem * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-4xl      { font-size: calc(2.25rem * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .text-5xl      { font-size: calc(3rem * var(--cv-font-scale, 1)) !important; }
+
+/* 
+  2. REAL-TIME LINE SPACING & DYNAMIC PARAGRAPH GAP SCALING
+  Directly controls the vertical line-height and paragraph spacing for body paragraphs, descriptions,
+  summaries, headers, and bullet point list items.
+*/
+#cv-preview-sheet p,
+#cv-preview-sheet li,
+#cv-preview-sheet span,
+#cv-preview-sheet div,
+#cv-preview-sheet h1,
+#cv-preview-sheet h2,
+#cv-preview-sheet h3,
+#cv-preview-sheet h4 {
+  line-height: calc(1.22 * var(--cv-line-spacing-ratio, 1)) !important;
+}
+
+#cv-preview-sheet p {
+  margin-bottom: calc(0.45rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important;
+}
+
+#cv-preview-sheet li {
+  margin-bottom: calc(0.2rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important;
+}
+
+/* 
+  3. DYNAMIC SPACING OVERRIDES FOR PARAGRAPHS, SECTIONS & ENTRIES
+  Ensures that when Line Spacing (%) or Font Size (%) is reduced, all vertical gaps
+  between paragraphs, bullet points, and section entries shrink proportionally to fit 1 page easily.
+*/
+#cv-preview-sheet .space-y-0\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(0.125rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .space-y-1 > :not([hidden]) ~ :not([hidden])   { margin-top: calc(0.25rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .space-y-1\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(0.375rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .space-y-2 > :not([hidden]) ~ :not([hidden])   { margin-top: calc(0.5rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .space-y-2\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(0.625rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .space-y-3 > :not([hidden]) ~ :not([hidden])   { margin-top: calc(0.75rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .space-y-4 > :not([hidden]) ~ :not([hidden])   { margin-top: calc(1rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .space-y-6 > :not([hidden]) ~ :not([hidden])   { margin-top: calc(1.5rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .space-y-8 > :not([hidden]) ~ :not([hidden])   { margin-top: calc(2rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+
+#cv-preview-sheet .gap-1   { gap: calc(0.25rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .gap-1\.5 { gap: calc(0.375rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .gap-2   { gap: calc(0.5rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .gap-2\.5 { gap: calc(0.625rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .gap-3   { gap: calc(0.75rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .gap-4   { gap: calc(1rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .gap-5   { gap: calc(1.25rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .gap-6   { gap: calc(1.5rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .gap-8   { gap: calc(2rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+
+#cv-preview-sheet .mb-1   { margin-bottom: calc(0.25rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mb-1\.5 { margin-bottom: calc(0.375rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mb-2   { margin-bottom: calc(0.5rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mb-2\.5 { margin-bottom: calc(0.625rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mb-3   { margin-bottom: calc(0.75rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mb-4   { margin-bottom: calc(1rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mb-6   { margin-bottom: calc(1.5rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+
+#cv-preview-sheet .mt-1   { margin-top: calc(0.25rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mt-1\.5 { margin-top: calc(0.375rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mt-2   { margin-top: calc(0.5rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mt-2\.5 { margin-top: calc(0.625rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mt-3   { margin-top: calc(0.75rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .mt-4   { margin-top: calc(1rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+
+#cv-preview-sheet .pb-1   { padding-bottom: calc(0.25rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .pb-1\.5 { padding-bottom: calc(0.375rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .pb-2   { padding-bottom: calc(0.5rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .pb-2\.5 { padding-bottom: calc(0.625rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .pb-3   { padding-bottom: calc(0.75rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+#cv-preview-sheet .pb-4   { padding-bottom: calc(1rem * var(--cv-line-spacing-ratio, 1) * var(--cv-font-scale, 1)) !important; }
+
+/* 
   Tailwind v4 uses OKLCH color spaces by default, which throws an error in html2canvas.
   By overriding the Slate, Zinc, and Stone color variables under #cv-preview-sheet to standard HEX,
   html2canvas receives safe computed colors and compiles the PDF perfectly without any visual changes.

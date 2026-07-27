@@ -87,6 +87,9 @@ export interface CVData {
     templateId: 'classic' | 'modern' | 'creative' | 'editorial' | 'tech' | 'vibrant' | 'elegant' | 'academic';
     accentColor: string;
     fontSize?: 'sm' | 'base' | 'lg' | number | string;
+    lineSpacing?: number | string;
+    pageMargin?: number | string;
+    textAlign?: 'justify' | 'left' | 'center';
   };
 }
 

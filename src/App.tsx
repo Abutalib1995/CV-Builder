@@ -3,7 +3,7 @@ import { CVData } from './types';
 import { INITIAL_CV_DATA } from './data';
 import EditorPanel from './components/EditorPanel';
 import StyleSwitcher from './components/StyleSwitcher';
-import CVTemplate from './components/CVTemplates';
+import CVTemplate, { getFontScaleNumber, getLineSpacingNumber } from './components/CVTemplates';
 import AuthModal from './components/AuthModal';
 import SavedCVsModal from './components/SavedCVsModal';
 import { 
@@ -675,7 +675,10 @@ export default function App() {
                 width: '210mm',
                 minHeight: '297mm',
                 zoom: previewScale / 100,
-              }}
+                '--cv-font-scale': getFontScaleNumber(cvData.metadata.fontSize) / 100,
+                '--cv-line-spacing-ratio': getLineSpacingNumber(cvData.metadata.lineSpacing) / 100,
+                '--cv-text-align': cvData.metadata.textAlign || 'justify',
+              } as React.CSSProperties}
             >
               <CVTemplate data={cvData} />
 

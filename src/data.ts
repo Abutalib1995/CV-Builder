@@ -134,7 +134,8 @@ export const INITIAL_CV_DATA: CVData = {
   metadata: {
     templateId: 'academic',
     accentColor: '#0284c7', // Academic Sky Blue
-    fontSize: 'base'
+    fontSize: 'base',
+    textAlign: 'justify'
   }
 };
 
